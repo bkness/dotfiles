@@ -30,3 +30,4 @@ node() { _lazy_nvm; command node "$@" }
 npm()  { _lazy_nvm; command npm "$@" }
 
 autoload -U colors && colors
+

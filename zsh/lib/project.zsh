@@ -1,3 +1,4 @@
+ 
 # ---------------------------------------
 # Project Templates
 # ---------------------------------------
@@ -14,9 +15,8 @@ cat <<EOF > package.json
     "dev": "node src/index.js"
   }
 }
-EOF 
+EOF
 }
-
 
 project_template_python() {
     echo "# Python project" > main.py
@@ -29,12 +29,12 @@ project_template_rust() {
 
 project_apply_template() {
     case "$1" in
-      node)   project_template_node ;;
+      node) project_template_node ;;
       python) project_template_python ;;
-      rust)   project_template_rust ;;
-      *)      
+      rust) project_template_rust ;;
+      *)
       echo "Unknown template: $1"
-      echo "Available templates: node | python | rust" 
+      echo "Available templates: node | python | rust"
       return 1
       ;;
     esac
@@ -56,10 +56,11 @@ project_dashboard() {
     "🧹 Clear Cache" \
     "🧪 Detect Project Type" \
     "⚙️ Settings (coming soon)" \
-    | fzf --height 50% --reverse --border \
-          --prompt="Dashboard > " \
-          --preview 'echo {}' \
-          --preview-window=down:3:wrap) || return
+  | fzf --height 50% --reverse --border \
+        --prompt="Dashboard > " \
+        --preview 'echo {}' \
+        --preview-window=down:3:wrap
+  ) || return
 
   case "$choice" in
     "📁 Open Project") project_dashboard_open ;;
@@ -67,10 +68,10 @@ project_dashboard() {
     "🔄 Refresh Project Cache") refresh-dev-cache; echo "Cache refreshed" ;;
     "🕒 Recent Projects") project_dashboard_recent ;;
     "🗂 List All Projects") project_dashboard_list ;;
-    "🧹 Clear Cache") 
+    "🧹 Clear Cache")
      : > "$DEV_CACHE"
      echo "Cache cleared"
-     refresh-dev-cache 
+     refresh-dev-cache
      ;;
     "🧪 Detect Project Type") project_dashboard_detect ;;
     *) echo "Not implemented yet" ;;
@@ -79,12 +80,12 @@ project_dashboard() {
 
 project_dashboard_open() {
     local dir
-    command -v fzf >/dev/null || return 
+    command -v fzf >/dev/null || return
 
     dir=$(cat "$DEV_CACHE" \
     | fzf --height 40% --reverse --border \
           --prompt="Open > " \
-          --preview 'project_preview_cmd {}' \
+          --preview="$(project_visuals_cmd)" \
           --preview-window=right:50%) || return
         
     cd "$dir"
@@ -94,7 +95,7 @@ project_dashboard_list() {
     cat "$DEV_CACHE" \
     | fzf --height 40% --reverse --border \
           --prompt="Projects > " \
-          --preview 'eza -la --icons {}' \
+          --preview="$(project_visuals_cmd)" \
           --preview-window=right:50%
 }
 
@@ -107,7 +108,7 @@ project_dashboard_detect() {
       echo "🦀 Rust project detected"
     else
       echo "❓ Unknown project type"
-    fi    
+    fi
 }
 
 project_dashboard_recent() {
@@ -117,7 +118,7 @@ project_dashboard_recent() {
   dir=$(tac "$DEV_RECENT" \
   | fzf --height 40% --reverse --border \
         --prompt="Recent > " \
-        --preview 'project_preview_cmd {}' \
+        --preview="$(project_visuals_cmd)" \
         --preview-window=right:50%) || return
 
   cd "$dir" && add-recent

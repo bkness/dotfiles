@@ -1,11 +1,19 @@
+# DEV_DEBUG=${DEV_DEBUG:-0}
 
-# Ensure DEV_ROOT is set
-if [[ -z "$DEV_ROOT" ]]; then
-  echo "❌ DEV_ROOT is not set. Please export DEV_ROOT to your projects directory."
-  return 1
+boot_project() {
+  local type="$1"
+
+  if plugin_exists "$type"; then
+     debug "Detected type: $type"
+     debug "Using plugin: ${PLUGIN_REGISTRY[$type]}"
+     local fn="${PLUGIN_REGISTRY[$type]}"
+     "$fn"
+  if ! typeset -f "$fn" >/dev/null; then
+     echo "❌ Plugin function $fn not found"
+     return 1
+  fi
 fi
-
-# Engine
+}
 
 # Create a new project
 newproj() {
@@ -38,7 +46,7 @@ newproj() {
 
   echo "📂 Created $dir"
   
-    # Ask for template 
+    # Ask for template
   local template
   read "template?Template (node/python/rust/none): "
   
@@ -47,19 +55,19 @@ newproj() {
   if [[ "$template" != "none" ]]; then
     project_apply_template "$template" || return
     echo "⚙️ Template: $template"
-  fi  
+  fi
 
   # Init git
   git init -q
   
-  cat <<EOF > README.md
+cat <<EOF >README.md
 # $name
 
 Project created on $(date "+%Y-%m-%d").
 EOF
   
   # Optional: create .gitignore
-  cat <<EOF > .gitignore
+cat <<EOF >.gitignore
 node_modules
 .env
 dist
@@ -68,16 +76,18 @@ build
 EOF
 
   # Optionals: create .env.example
-  cat <<EOF > .env.example
-  # Environment variables
-  # EXAMPLE_KEY=your_value_here
-EOF  
+cat <<EOF >.env.example
+# Environment variables
+# EXAMPLE_KEY=your_value_here
+EOF
 
   # GitHub CLI integration
-  if command -v gh >/dev/null; then
+  if ! command -v gh >/dev/null; then
+    echo "⚠️ GitHub CLI (gh) not found. Skipping GitHub repo creation."
+  else
     read "create_remote?Create GitHub repo? (y/n): "
     if [[ "$create_remote" == "y" ]]; then
-      gh repo create "$name" --public --source=. --remote=origin --push
+      gh repo create "$name" --private --source=. --remote=origin --push
       echo "🚀 GitHub repo created"
     fi
   fi
@@ -86,6 +96,7 @@ EOF
   command -v code >/dev/null && nohup code . >/dev/null 2>&1 &
 
   echo "✅ Project ready"
+
 }
 
 # Full "Project Open + Dev Start" command
@@ -110,73 +121,17 @@ dev() {
   add-recent
   refresh-dev-cache
 
-  # Node project
-  if [[ -f package.json ]]; then
-    echo "📦 Node project detected"
+  # Project detection and boot
+  type=$(project_detect)
 
-    if [[ ! -d node_modules ]]; then
-      echo "Installing dependencies..."
-      if ! npm install; then
-        echo "❌ npm install failed. Check your npm logs."
-        return 1
-      fi
-    fi
-
-    command -v code >/dev/null && nohup code . >/dev/null 2>&1 &
-
-    if command -v jq >/dev/null && jq -e '.scripts.dev' package.json >/dev/null 2>&1; then
-      echo "▶︎ Starting dev server..."
-      if ! npm run dev; then
-        echo "❌ npm run dev failed."
-        return 1
-      fi
-    fi
-    
-    return
-  fi
-    
-  # Python project
-  if [[ -f requirements.txt ]]; then
-    echo "🐍 Python project detected"
-
-    command -v code >/dev/null && nohup code . >/dev/null 2>&1 &
-
-    if [[ ! -d .venv ]]; then
-      echo "Creating virtual environment..."
-      if ! python3 -m venv .venv; then
-        echo "❌ Failed to create virtual environment."
-        return 1
-      fi
-    fi
-    
-    source .venv/bin/activate
-    if ! pip install -r requirements.txt >/dev/null 2>&1; then
-      echo "❌ pip install failed. Check requirements.txt and your Python environment."
-      return 1
-    fi
-    
-    return
+  if [[ "$type" == "unknown" ]]; then
+    echo "⚠️ Could not detect project type, skipping boot"
+    return 1
   fi
 
-  # Rust project
-  if [[ -f Cargo.toml ]]; then
-    echo "🦀 Rust project detected"
+  echo "🚀 Detected project type: $type"
 
-    command -v code >/dev/null && nohup code . >/dev/null 2>&1 &
-    
-    if command -v cargo-watch >/dev/null; then
-      if ! cargo watch -x run; then
-        echo "❌ cargo watch failed."
-        return 1
-      fi
-    else
-      if ! cargo run; then
-        echo "❌ cargo run failed."
-        return 1
-      fi
-    fi
-    return
-  fi
+  boot_project "$type"
 }
 
 # Change branch
@@ -189,6 +144,7 @@ cb() {
   else
     echo "❌ $fg[red]Branch name required$reset_color"
   fi
+
 }
 
 # Change to main or master branch
@@ -200,13 +156,15 @@ cm() {
   else
     echo "No main or master branch found"
   fi
+
 }
 
-# Fuzzy branch switching 
+# Fuzzy branch switching
 gb() {
   local branch
   branch=$(git branch --all | sed 's/^[* ]*//' | fzf) || return
   git switch "${branch#remotes/origin/}"
+
 }
 
 # Opens fuzzy, jumps instantly anywhere you've been
@@ -214,31 +172,23 @@ j() {
   if command -v zoxide >/dev/null; then
     cd "$(zoxide query -i)"
   else
-    echo "❌ zoxide not found. Please install zoxide or use 'cd' manually."
+    echo "❌ zoxide not found. Please install zoxide or use cd manually."
   fi
+
 }
 
 # Open projects via fuzzy search
 p() {
-  local dir
-  if ! command -v fzf >/dev/null; then
-    echo "❌ fzf not found. Please install fzf."
-    return 1
-  fi
-
-  if command -v fd >/dev/null; then
-    local search_cmd="fd . \"$DEV_ROOT\" -td -d3"
-  else
-    echo "❌ fd not found. Falling back to find."
-    local search_cmd="find \"$DEV_ROOT\" -type d -maxdepth 3"
-  fi
-
-  dir=$(eval "$search_cmd" | fzf --height 40% --reverse --border \
-        --prompt="Project > " \
-        --preview="$(project_preview_cmd)" \
-        --preview-window=right:50%) || return
-
-  cd "$dir"
+  command -v fzf >/dev/null || return 1
+  command -v fd >/dev/null || return 1
+    
+  cd "$(
+    fd -t d -d 3 . "$DEV_ROOT" \
+    | fzf --height 40% --reverse --border \
+          --prompt="Projects > " \
+          --preview "$(project_visuals_cmd)" \
+          --preview-window=right:50%
+  )"
 }
 
 # Open + Run workflow
@@ -249,4 +199,11 @@ pr() {
 
 dashboard() {
   project_dashboard
+
 }
+# Ensure DEV_ROOT is set
+if [[ -z "$DEV_ROOT" ]]; then
+  echo "❌ DEV_ROOT is not set. Please export DEV_ROOT to your projects directory."
+  return 1
+fi
+
