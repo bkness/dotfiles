@@ -1,18 +1,16 @@
-# DEV_DEBUG=${DEV_DEBUG:-0}
 
+# Fixed boot_project — guard runs BEFORE the call, not after
 boot_project() {
   local type="$1"
-
-  if plugin_exists "$type"; then
-     debug "Detected type: $type"
-     debug "Using plugin: ${PLUGIN_REGISTRY[$type]}"
-     local fn="${PLUGIN_REGISTRY[$type]}"
-     "$fn"
-  if ! typeset -f "$fn" >/dev/null; then
-     echo "❌ Plugin function $fn not found"
-     return 1
+  local fn="${PLUGIN_REGISTRY[$type]}"
+  if ! typeset -f "$fn" >/dev/null 2>&1; then
+    echo "❌ Plugin function $fn is registered but not loaded"
+    return 1
   fi
-fi
+
+  echo "Detected type: $type"
+  echo "Using plugin: $fn"
+  "$fn" || return
 }
 
 # Create a new project
@@ -96,7 +94,8 @@ EOF
   command -v code >/dev/null && nohup code . >/dev/null 2>&1 &
 
   echo "✅ Project ready"
-
+  refresh-dev-cache
+  add-recent
 }
 
 # Full "Project Open + Dev Start" command
@@ -104,7 +103,7 @@ dev() {
   local dir
 
   if [[ -z "$1" ]]; then
-    dashboard
+    ui "🚀 Open project: "
     return
   fi
 
@@ -135,20 +134,21 @@ dev() {
 }
 
 # Change branch
-cb() {
+chbr() {
   echo "$fg[magenta]New branch name?$reset_color"
-  read -r branch
+  read "branch?prompt"
 
   if [[ -n "$branch" ]]; then
     git switch -c "$branch"
   else
     echo "❌ $fg[red]Branch name required$reset_color"
   fi
-
+  refresh-dev-cache
+  add-recent
 }
 
 # Change to main or master branch
-cm() {
+cmst() {
   if git show-ref --verify --quiet refs/heads/main; then
     git switch main
   elif git show-ref --verify --quiet refs/heads/master; then
@@ -156,15 +156,17 @@ cm() {
   else
     echo "No main or master branch found"
   fi
-
+  refresh-dev-cache
+  add-recent
 }
 
 # Fuzzy branch switching
-gb() {
+gbr() {
   local branch
   branch=$(git branch --all | sed 's/^[* ]*//' | fzf) || return
   git switch "${branch#remotes/origin/}"
-
+  refresh-dev-cache
+  add-recent
 }
 
 # Opens fuzzy, jumps instantly anywhere you've been
@@ -174,10 +176,13 @@ j() {
   else
     echo "❌ zoxide not found. Please install zoxide or use cd manually."
   fi
-
+  add-recent
+  refresh-dev-cache
 }
 
-# Open projects via fuzzy search
+#--------------------------------------
+#
+#--------------------------------------
 p() {
   command -v fzf >/dev/null || return 1
   command -v fd >/dev/null || return 1
@@ -186,24 +191,29 @@ p() {
     fd -t d -d 3 . "$DEV_ROOT" \
     | fzf --height 40% --reverse --border \
           --prompt="Projects > " \
-          --preview "$(project_visuals_cmd)" \
+          --preview 'printf "Selected: %s\n\n" {} && eza -la --icons -1 {}' \
           --preview-window=right:50%
   )"
+  add-recent
+  refresh-dev-cache
 }
 
 # Open + Run workflow
 pr() {
   p || return
   command -v code >/dev/null && nohup code . >/dev/null 2>&1 &
+  add-recent
+  refresh-dev-cache
 }
 
-dashboard() {
-  project_dashboard
+  dashboard_ui() {
+  echo "📁 List All Projects"
+  }
 
-}
 # Ensure DEV_ROOT is set
 if [[ -z "$DEV_ROOT" ]]; then
   echo "❌ DEV_ROOT is not set. Please export DEV_ROOT to your projects directory."
   return 1
 fi
 
+# Execute in terminal is just "dev" for now, but this is where we would add options for different dashboards or project lists or whatever other cool features we want to add in the future. perfect typical usage would be "dev" to open the project picker, "dev myproject" to open a specific project, and eventually we could add "dev --recent" or "dev --favorites" or "dev --dashboard" or whatever other cool features we want to add in the future. For now, just "dev" and "dev <project>" are supported but this is where we would expand from in the future as we build out more features and dashboards and stuff like that. perfect typical usage would be "dev" to open the project picker, "dev myproject" to open a specific project, and eventually we could add "dev --recent" or "dev --favorites" or "dev --dashboard" or whatever other cool features we want to add in the futur

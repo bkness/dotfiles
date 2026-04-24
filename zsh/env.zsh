@@ -13,7 +13,6 @@ setopt NO_BEEP
 setopt PROMPT_SUBST
 setopt INTERACTIVE_COMMENTS
 
-
 # ---------------------------------------
 # Lazy-load NVM
 # ---------------------------------------
@@ -29,5 +28,10 @@ nvm()  { _lazy_nvm; command nvm "$@" }
 node() { _lazy_nvm; command node "$@" }
 npm()  { _lazy_nvm; command npm "$@" }
 
-autoload -U colors && colors
-
+# UI theme for fzf
+export FZF_THEME="
+  --color=fg:#00ff00,bg:#000000,hl:#00ff00
+  --color=fg+:#00ff00,bg+:#001100,hl+:#00ff00
+  --color=border:#00ff00
+  --color=prompt:#00ff00,pointer:#00ff00,marker:#00ff00
+"
