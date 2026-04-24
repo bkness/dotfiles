@@ -1,12 +1,3 @@
-project_detect() {
-    local type="unknown"
-   
-    [[ -f package.json ]] && echo "node" && return
-    [[ -f requirements.txt ]] && echo "python" && return
-    [[ -f Cargo.toml ]] && echo "rust" && return
-   
-    echo "unknown"
-}
 
 # Detect broken or malformed heredocs in shell scripts
 heredoc_lint() {

@@ -1,18 +1,16 @@
-# DEV_DEBUG=${DEV_DEBUG:-0}
 
+# Fixed boot_project — guard runs BEFORE the call, not after
 boot_project() {
   local type="$1"
-
-  if plugin_exists "$type"; then
-     debug "Detected type: $type"
-     debug "Using plugin: ${PLUGIN_REGISTRY[$type]}"
-     local fn="${PLUGIN_REGISTRY[$type]}"
-     "$fn"
-  if ! typeset -f "$fn" >/dev/null; then
-     echo "❌ Plugin function $fn not found"
-     return 1
+  local fn="${PLUGIN_REGISTRY[$type]}"
+  if ! typeset -f "$fn" >/dev/null 2>&1; then
+    echo "❌ Plugin function $fn is registered but not loaded"
+    return 1
   fi
-fi
+
+  echo "Detected type: $type"
+  echo "Using plugin: $fn"
+  "$fn" || return
 }
 
 # Create a new project
@@ -46,7 +44,7 @@ newproj() {
 
   echo "📂 Created $dir"
   
-    # Ask for template
+    # Ask for template 
   local template
   read "template?Template (node/python/rust/none): "
   
@@ -55,7 +53,7 @@ newproj() {
   if [[ "$template" != "none" ]]; then
     project_apply_template "$template" || return
     echo "⚙️ Template: $template"
-  fi
+  fi  
 
   # Init git
   git init -q
@@ -96,7 +94,8 @@ EOF
   command -v code >/dev/null && nohup code . >/dev/null 2>&1 &
 
   echo "✅ Project ready"
-
+  refresh-dev-cache
+  add-recent
 }
 
 # Full "Project Open + Dev Start" command
@@ -104,7 +103,7 @@ dev() {
   local dir
 
   if [[ -z "$1" ]]; then
-    dashboard
+    project_ui
     return
   fi
 
@@ -135,20 +134,21 @@ dev() {
 }
 
 # Change branch
-cb() {
+chbr() {
   echo "$fg[magenta]New branch name?$reset_color"
-  read -r branch
+  read "branch?prompt" 
 
   if [[ -n "$branch" ]]; then
     git switch -c "$branch"
   else
     echo "❌ $fg[red]Branch name required$reset_color"
   fi
-
+  refresh-dev-cache
+  add-recent
 }
 
 # Change to main or master branch
-cm() {
+cmst() {
   if git show-ref --verify --quiet refs/heads/main; then
     git switch main
   elif git show-ref --verify --quiet refs/heads/master; then
@@ -156,15 +156,17 @@ cm() {
   else
     echo "No main or master branch found"
   fi
-
+  refresh-dev-cache
+  add-recent
 }
 
-# Fuzzy branch switching
-gb() {
+# Fuzzy branch switching  
+gbr() {
   local branch
   branch=$(git branch --all | sed 's/^[* ]*//' | fzf) || return
   git switch "${branch#remotes/origin/}"
-
+  refresh-dev-cache
+  add-recent
 }
 
 # Opens fuzzy, jumps instantly anywhere you've been
@@ -174,10 +176,13 @@ j() {
   else
     echo "❌ zoxide not found. Please install zoxide or use cd manually."
   fi
-
+  add-recent
+  refresh-dev-cache
 }
 
-# Open projects via fuzzy search
+#--------------------------------------
+# 
+#--------------------------------------
 p() {
   command -v fzf >/dev/null || return 1
   command -v fd >/dev/null || return 1
@@ -186,24 +191,74 @@ p() {
     fd -t d -d 3 . "$DEV_ROOT" \
     | fzf --height 40% --reverse --border \
           --prompt="Projects > " \
-          --preview "$(project_visuals_cmd)" \
+          --preview 'printf "Selected: %s\n\n" {} && eza -la --icons -1 {}' \
           --preview-window=right:50%
-  )"
+  )"  
+  add-recent
+  refresh-dev-cache
 }
 
 # Open + Run workflow
 pr() {
   p || return
   command -v code >/dev/null && nohup code . >/dev/null 2>&1 &
+  add-recent
+  refresh-dev-cache
 }
 
-dashboard() {
-  project_dashboard
-
-}
 # Ensure DEV_ROOT is set
 if [[ -z "$DEV_ROOT" ]]; then
   echo "❌ DEV_ROOT is not set. Please export DEV_ROOT to your projects directory."
   return 1
 fi
 
+# ---------------------------------------
+# Dev utilities
+# ---------------------------------------
+
+# mkdir + cd in one step
+take() {
+  mkdir -p "$1" && cd "$1"
+}
+
+# Kill whatever is running on a port
+killport() {
+  local port="${1:?Usage: killport <port>}"
+  local pid
+  pid=$(lsof -ti tcp:"$port") || { echo "Nothing on port $port"; return; }
+  echo "Killing PID $pid on port $port"
+  kill -9 $pid
+}
+
+# Show all listening ports
+ports() {
+  lsof -iTCP -sTCP:LISTEN -n -P | awk 'NR==1 || /LISTEN/'
+}
+
+# Quick local HTTP server
+serve() {
+  local port="${1:-8080}"
+  echo "Serving $(pwd) on http://localhost:$port"
+  if command -v python3 >/dev/null; then
+    python3 -m http.server "$port"
+  elif command -v npx >/dev/null; then
+    npx serve -l "$port"
+  else
+    echo "❌ Needs python3 or npx"
+  fi
+}
+
+# Load a .env file into the current shell
+envload() {
+  local file="${1:-.env}"
+  [[ ! -f "$file" ]] && { echo "❌ $file not found"; return 1; }
+  set -a
+  source "$file"
+  set +a
+  echo "✅ Loaded $file"
+}
+
+# Reload shell config without restarting
+reload() {
+  exec zsh
+}

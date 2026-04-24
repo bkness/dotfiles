@@ -1,125 +1,198 @@
- 
+
 # ---------------------------------------
 # Project Templates
 # ---------------------------------------
 
+for file in ~/dev/dotfiles/zsh/plugins/project/*.zsh; do
+  name="${file:t:r}"
+  register_plugin "project/$name" "project_boot_${name}"
+done
+
 project_template_node() {
-    mkdir -p src
-    echo "console.log('Hello World');" > src/index.js
+  mkdir -p src
+  echo "console.log('Hello World');" > src/index.js
 cat <<EOF > package.json
 {
   "name": "app",
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node src/index.js"
+     "dev": "node src/index.js"
   }
 }
 EOF
 }
 
 project_template_python() {
-    echo "# Python project" > main.py
-    echo "requests" > requirements.txt
+  echo "# Python project" > main.py
+  echo "requests" > requirements.txt
 }
 
 project_template_rust() {
-    cargo init --quiet
+  cargo init --quiet
 }
 
 project_apply_template() {
-    case "$1" in
-      node) project_template_node ;;
-      python) project_template_python ;;
-      rust) project_template_rust ;;
-      *)
+  case "$1" in
+    node)   project_template_node ;;
+    python) project_template_python ;;
+    rust)   project_template_rust ;;
+    *)
       echo "Unknown template: $1"
-      echo "Available templates: node | python | rust"
+      echo "Available: node | python | rust"
       return 1
       ;;
-    esac
+  esac
 }
 
 # ---------------------------------------
 # Project Dashboard
 # ---------------------------------------
 
-project_dashboard() {
+project_ui() {
+  local header="  $(pwd | sed "s|$HOME|~|")  ·  $(date +%H:%M)"
+
   local choice
+  choice=$(printf '%s\n' \
+    "  📁  Open Project" \
+    "  🚀  Open + Start" \
+    "  🆕  Create Project" \
+    "  🕒  Recent Projects" \
+    "  💼  List All Projects" \
+    "  📝  Edit Readme" \
+    "  🐙  GitHub" \
+    "  ──────────────────" \
+    "  🔄  Refresh Cache" \
+    "  🧹  Clear Cache" \
+    "  🧪  Detect Project Type" \
+    "  🛠   Settings" \
+    | grep -v '^\s*─\+\s*$' \
+    | fzf $FZF_THEME \
+        --border=rounded \
+        --border-label='  ◈  DEV  ' \
+        --header="$header" \
+        --header-first \
+        --prompt='  ❯ ' \
+        --preview='printf "\033[32m%s\033[0m\n" {}' \
+        --preview-window=down:2:wrap) || return
 
-  choice=$(printf "%s\n" \
-    "📁 Open Project" \
-    "🆕 Create Project" \
-    "🕒 Recent Projects" \
-    "🔄 Refresh Project Cache" \
-    "🗂 List All Projects" \
-    "🧹 Clear Cache" \
-    "🧪 Detect Project Type" \
-    "⚙️ Settings (coming soon)" \
-  | fzf --height 50% --reverse --border \
-        --prompt="Dashboard > " \
-        --preview 'echo {}' \
-        --preview-window=down:3:wrap
-  ) || return
-
-  case "$choice" in
-    "📁 Open Project") project_dashboard_open ;;
-    "🆕 Create Project") newproj ;;
-    "🔄 Refresh Project Cache") refresh-dev-cache; echo "Cache refreshed" ;;
-    "🕒 Recent Projects") project_dashboard_recent ;;
-    "🗂 List All Projects") project_dashboard_list ;;
-    "🧹 Clear Cache")
-     : > "$DEV_CACHE"
-     echo "Cache cleared"
-     refresh-dev-cache
-     ;;
-    "🧪 Detect Project Type") project_dashboard_detect ;;
-    *) echo "Not implemented yet" ;;
+  case "${choice## }" in
+    "📁  Open Project")      project_ui_open ;;
+    "🚀  Open + Start")      project_ui_open_and_boot ;;
+    "🆕  Create Project")    newproj ;;
+    "🕒  Recent Projects")   project_ui_recent ;;
+    "💼  List All Projects") project_ui_list ;;
+    "📝  Edit Readme")       quick_edit_readme ;;
+    "🐙  GitHub")            github_ui ;;
+    "🔄  Refresh Cache")     refresh-dev-cache; echo "✅ Cache refreshed" ;;
+    "🧹  Clear Cache")
+      : > "$DEV_CACHE"
+      echo "🧹 Cache cleared"
+      refresh-dev-cache
+      ;;
+    "🧪  Detect Project Type") project_ui_detect ;;
+    "🛠   Settings")           echo "⚙️  Coming soon" ;;
   esac
 }
 
-project_dashboard_open() {
-    local dir
-    command -v fzf >/dev/null || return
+# ---------------------------------------
+# Project pickers
+# ---------------------------------------
 
-    dir=$(cat "$DEV_CACHE" \
-    | fzf --height 40% --reverse --border \
-          --prompt="Open > " \
-          --preview="$(project_visuals_cmd)" \
-          --preview-window=right:50%) || return
-        
-    cd "$dir"
-}
+_project_preview='
+  if [[ -f {}/README.md ]]; then
+    bat --style=plain --color=always {}/README.md 2>/dev/null
+  else
+    eza -la --icons -1 {} 2>/dev/null
+  fi
+'
 
-project_dashboard_list() {
-    cat "$DEV_CACHE" \
-    | fzf --height 40% --reverse --border \
-          --prompt="Projects > " \
-          --preview="$(project_visuals_cmd)" \
-          --preview-window=right:50%
-}
-
-project_dashboard_detect() {
-    if [[ -f package.json ]]; then
-      echo "📦 Node.js project detected"
-    elif [[ -f requirements.txt ]]; then
-      echo "🐍 Python project detected"
-    elif [[ -f Cargo.toml ]]; then
-      echo "🦀 Rust project detected"
-    else
-      echo "❓ Unknown project type"
-    fi
-}
-
-project_dashboard_recent() {
-  [[ ! -s "$DEV_RECENT" ]] && { echo "No recent projects";return; }
+project_ui_open() {
+  command -v fzf >/dev/null || return
 
   local dir
-  dir=$(tac "$DEV_RECENT" \
-  | fzf --height 40% --reverse --border \
-        --prompt="Recent > " \
-        --preview="$(project_visuals_cmd)" \
-        --preview-window=right:50%) || return
+  dir=$(cat "$DEV_CACHE" \
+    | fzf $FZF_THEME \
+          --border=rounded \
+          --border-label='  ◈  OPEN PROJECT  ' \
+          --prompt='  ❯ ' \
+          --preview="$_project_preview" \
+          --preview-window=right:55% \
+          --preview-label='  Preview  ') || return
+
+  cd "$dir" && add-recent && refresh-dev-cache
+}
+
+project_ui_open_and_boot() {
+  command -v fzf >/dev/null || return
+
+  local dir
+  dir=$(cat "$DEV_CACHE" \
+    | fzf $FZF_THEME \
+          --border=rounded \
+          --border-label='  ◈  OPEN + START  ' \
+          --prompt='  ❯ ' \
+          --preview="$_project_preview" \
+          --preview-window=right:55% \
+          --preview-label='  Preview  ') || return
+
+  cd "$dir" && add-recent && refresh-dev-cache
+
+  local type
+  type=$(project_detect)
+  if [[ "$type" == "unknown" ]]; then
+    echo "⚠️  Could not detect project type — dropping into shell"
+    return
+  fi
+
+  boot_project "$type"
+}
+
+project_ui_list() {
+  local dir
+  dir=$(cat "$DEV_CACHE" \
+    | fzf $FZF_THEME \
+          --border=rounded \
+          --border-label='  ◈  ALL PROJECTS  ' \
+          --prompt='  ❯ ' \
+          --preview="$_project_preview" \
+          --preview-window=right:55% \
+          --preview-label='  Preview  ') || return
+  cd "$dir" && add-recent
+}
+
+project_ui_recent() {
+  [[ ! -s "$DEV_RECENT" ]] && { echo "No recent projects"; return; }
+
+  local dir
+  dir=$(cat "$DEV_RECENT" \
+    | fzf $FZF_THEME \
+          --border=rounded \
+          --border-label='  ◈  RECENT  ' \
+          --prompt='  ❯ ' \
+          --preview="$_project_preview" \
+          --preview-window=right:55% \
+          --preview-label='  Preview  ') || return
 
   cd "$dir" && add-recent
+}
+
+project_ui_detect() {
+  if [[ -f package.json && -f requirements.txt ]]; then
+    echo "🔀 Fullstack project detected"
+  elif [[ -f package.json ]]; then
+    echo "📦 Node.js project detected"
+  elif [[ -f requirements.txt ]]; then
+    echo "🐍 Python project detected"
+  elif [[ -f Cargo.toml ]]; then
+    echo "🦀 Rust project detected"
+  else
+    echo "❓ Unknown project type"
+  fi
+}
+
+quick_edit_readme() {
+  local readme="${PWD}/README.md"
+  [[ ! -f "$readme" ]] && echo "# $(basename "$PWD")" > "$readme"
+  ${EDITOR:-vim} "$readme"
 }
