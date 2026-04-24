@@ -9,12 +9,12 @@ refresh-dev-cache() {
 }
 
 # Auto-refresh cache if missing or empty
-[[ ! -s "$DEV_CACHE" ]] && refresh-dev-cache
+[[ ! -s "$DEV_CACHE" ]] && refresh-dev-cache &!
 
 # Recent projects list
 DEV_RECENT="$HOME/.dev-recent"
 
 add-recent() {
   echo "$PWD" >> "$DEV_RECENT"
-  awk '!seen[$0]++' "$DEV_RECENT" > "$DEV_RECENT.tmp" && mv "$DEV_RECENT.tmp" "$DEV_RECENT"
+  awk '!seen[$0]++' "$DEV_RECENT" | tail -50 > "$DEV_RECENT.tmp" && mv "$DEV_RECENT.tmp" "$DEV_RECENT"
 }

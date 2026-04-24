@@ -44,7 +44,7 @@ newproj() {
 
   echo "📂 Created $dir"
   
-    # Ask for template
+    # Ask for template 
   local template
   read "template?Template (node/python/rust/none): "
   
@@ -53,7 +53,7 @@ newproj() {
   if [[ "$template" != "none" ]]; then
     project_apply_template "$template" || return
     echo "⚙️ Template: $template"
-  fi
+  fi  
 
   # Init git
   git init -q
@@ -103,7 +103,7 @@ dev() {
   local dir
 
   if [[ -z "$1" ]]; then
-    ui "🚀 Open project: "
+    project_ui
     return
   fi
 
@@ -136,7 +136,7 @@ dev() {
 # Change branch
 chbr() {
   echo "$fg[magenta]New branch name?$reset_color"
-  read "branch?prompt"
+  read "branch?prompt" 
 
   if [[ -n "$branch" ]]; then
     git switch -c "$branch"
@@ -160,7 +160,7 @@ cmst() {
   add-recent
 }
 
-# Fuzzy branch switching
+# Fuzzy branch switching  
 gbr() {
   local branch
   branch=$(git branch --all | sed 's/^[* ]*//' | fzf) || return
@@ -181,7 +181,7 @@ j() {
 }
 
 #--------------------------------------
-#
+# 
 #--------------------------------------
 p() {
   command -v fzf >/dev/null || return 1
@@ -193,7 +193,7 @@ p() {
           --prompt="Projects > " \
           --preview 'printf "Selected: %s\n\n" {} && eza -la --icons -1 {}' \
           --preview-window=right:50%
-  )"
+  )"  
   add-recent
   refresh-dev-cache
 }
@@ -206,14 +206,59 @@ pr() {
   refresh-dev-cache
 }
 
-  dashboard_ui() {
-  echo "📁 List All Projects"
-  }
-
 # Ensure DEV_ROOT is set
 if [[ -z "$DEV_ROOT" ]]; then
   echo "❌ DEV_ROOT is not set. Please export DEV_ROOT to your projects directory."
   return 1
 fi
 
-# Execute in terminal is just "dev" for now, but this is where we would add options for different dashboards or project lists or whatever other cool features we want to add in the future. perfect typical usage would be "dev" to open the project picker, "dev myproject" to open a specific project, and eventually we could add "dev --recent" or "dev --favorites" or "dev --dashboard" or whatever other cool features we want to add in the future. For now, just "dev" and "dev <project>" are supported but this is where we would expand from in the future as we build out more features and dashboards and stuff like that. perfect typical usage would be "dev" to open the project picker, "dev myproject" to open a specific project, and eventually we could add "dev --recent" or "dev --favorites" or "dev --dashboard" or whatever other cool features we want to add in the futur
+# ---------------------------------------
+# Dev utilities
+# ---------------------------------------
+
+# mkdir + cd in one step
+take() {
+  mkdir -p "$1" && cd "$1"
+}
+
+# Kill whatever is running on a port
+killport() {
+  local port="${1:?Usage: killport <port>}"
+  local pid
+  pid=$(lsof -ti tcp:"$port") || { echo "Nothing on port $port"; return; }
+  echo "Killing PID $pid on port $port"
+  kill -9 $pid
+}
+
+# Show all listening ports
+ports() {
+  lsof -iTCP -sTCP:LISTEN -n -P | awk 'NR==1 || /LISTEN/'
+}
+
+# Quick local HTTP server
+serve() {
+  local port="${1:-8080}"
+  echo "Serving $(pwd) on http://localhost:$port"
+  if command -v python3 >/dev/null; then
+    python3 -m http.server "$port"
+  elif command -v npx >/dev/null; then
+    npx serve -l "$port"
+  else
+    echo "❌ Needs python3 or npx"
+  fi
+}
+
+# Load a .env file into the current shell
+envload() {
+  local file="${1:-.env}"
+  [[ ! -f "$file" ]] && { echo "❌ $file not found"; return 1; }
+  set -a
+  source "$file"
+  set +a
+  echo "✅ Loaded $file"
+}
+
+# Reload shell config without restarting
+reload() {
+  exec zsh
+}

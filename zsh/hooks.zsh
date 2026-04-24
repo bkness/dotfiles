@@ -38,32 +38,36 @@ _hook_chpwd() {
   [[ "$type" != "unknown" ]] && fire_hook "on_enter/$type"  # fixed: was missing event arg
 }
 
-add-zsh-hook chpwd _hook_chpwd
-
-Auto-activate Python virtualenv
+# Auto-activate Python virtualenv
 auto-venv() {
   if [[ -f .venv/bin/activate ]]; then
     source .venv/bin/activate
   fi
 }
-add-zsh-hook chpwd auto-venv
+register_hook "on_dir_enter" "auto-venv"
+
+# Auto-switch Node version when .nvmrc is present
+auto-nvm() {
+  [[ -f .nvmrc ]] || return
+  command -v nvm >/dev/null 2>&1 || return
+  local requested
+  requested=$(cat .nvmrc)
+  local current
+  current=$(node --version 2>/dev/null)
+  [[ "$current" == "v${requested#v}" ]] && return
+  nvm use --silent
+}
+register_hook "on_dir_enter" "auto-nvm"
 
 project_detect() {
-    local type="unknown"
-   
-# Monorepo / fullstack awareness
-[[ -f package.json && -f requirements.txt ]] && echo "fullstack" && return
-[[ -f requirements.txt && ! -f package.json ]] && echo "python" && return
-[[ -f Cargo.toml  && ! -f package.json && ! -f requirements.txt ]] && echo "rust" && return
-   
-    echo "unknown"
+  [[ -f package.json && -f requirements.txt ]] && echo "fullstack" && return
+  [[ -f package.json && ! -f requirements.txt ]] && echo "node" && return
+  [[ -f requirements.txt && ! -f package.json ]] && echo "python" && return
+  [[ -f Cargo.toml && ! -f package.json && ! -f requirements.txt ]] && echo "rust" && return
+  [[ -f go.mod ]] && echo "go" && return
+  echo "unknown"
 }
 
-
-
-
-# # In a rust.zsh setup hook, runs once
-# if [[ ! -f "$HOME/.zfunc/_cargo" ]]; then
-#   rustup completions zsh cargo > ~/.zfunc/_cargo
-#   rustup completions zsh > ~/.zfunc/_rustup
-# fi
+# Wire the dispatcher into zsh's chpwd event
+autoload -Uz add-zsh-hook
+add-zsh-hook chpwd _hook_chpwd
