@@ -79,7 +79,7 @@ _palette_widget() {
   local selected
   selected=$(
     _palette_entries \
-    | fzf $FZF_THEME \
+    | fzf "${FZF_THEME[@]}" \
         --border=rounded \
         --border-label='  ◈  COMMAND PALETTE  ' \
         --prompt='  ❯ ' \

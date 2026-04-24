@@ -61,7 +61,7 @@ github_ui() {
     "  📥  Clone Repo" \
     "  🆕  Create Repo" \
     | grep -v '^\s*─\+\s*$' \
-    | fzf $FZF_THEME \
+    | fzf "${FZF_THEME[@]}" \
         --border=rounded \
         --border-label='  ◈  GITHUB  ' \
         --header="$header" \
@@ -91,7 +91,7 @@ github_ui_repos() {
     --json name,isPrivate,description \
     --jq '.[] | (if .isPrivate then "🔒" else "🌐" end) + "  " + .name + "  \t" + (.description // "")' \
     | column -t -s $'\t' \
-    | fzf $FZF_THEME \
+    | fzf "${FZF_THEME[@]}" \
           --border=rounded \
           --border-label='  ◈  MY REPOS  ' \
           --prompt='  ❯ ' \
@@ -107,7 +107,7 @@ github_ui_repos() {
     "  🔗  Open in browser" \
     "  📥  Clone" \
     "  👁   View" \
-    | fzf $FZF_THEME \
+    | fzf "${FZF_THEME[@]}" \
         --border=rounded \
         --border-label='  ◈  ACTION  ' \
         --prompt='  ❯ ' \
@@ -130,7 +130,7 @@ github_ui_prs() {
     --json number,title,author,headRefName \
     --jq '.[] | "#" + (.number | tostring) + "  " + .title + "\t" + .author.login + " → " + .headRefName' \
     | column -t -s $'\t' \
-    | fzf $FZF_THEME \
+    | fzf "${FZF_THEME[@]}" \
           --border=rounded \
           --border-label='  ◈  PULL REQUESTS  ' \
           --prompt='  ❯ ' \
@@ -148,7 +148,7 @@ github_ui_prs() {
     "  👁   View" \
     "  ✅  Merge" \
     "  ❌  Close" \
-    | fzf $FZF_THEME \
+    | fzf "${FZF_THEME[@]}" \
         --border=rounded \
         --border-label='  ◈  ACTION  ' \
         --prompt='  ❯ ' \
@@ -169,7 +169,7 @@ github_ui_issues() {
     --json number,title,assignees \
     --jq '.[] | "#" + (.number | tostring) + "  " + .title + "\t" + (if (.assignees | length) > 0 then .assignees[0].login else "unassigned" end)' \
     | column -t -s $'\t' \
-    | fzf $FZF_THEME \
+    | fzf "${FZF_THEME[@]}" \
           --border=rounded \
           --border-label='  ◈  ISSUES  ' \
           --prompt='  ❯ ' \
@@ -186,7 +186,7 @@ github_ui_issues() {
     "  👁   View" \
     "  ✅  Close" \
     "  💬  Comment" \
-    | fzf $FZF_THEME \
+    | fzf "${FZF_THEME[@]}" \
         --border=rounded \
         --border-label='  ◈  ACTION  ' \
         --prompt='  ❯ ' \
@@ -211,7 +211,7 @@ github_ui_new() {
 
   local vis
   vis=$(printf '%s\n' "  private" "  public" \
-    | fzf $FZF_THEME \
+    | fzf "${FZF_THEME[@]}" \
         --border=rounded \
         --border-label='  ◈  VISIBILITY  ' \
         --prompt='  ❯ ' \
@@ -237,7 +237,7 @@ github_ui_clone() {
     --json name,description \
     --jq '.[] | .name + "\t" + (.description // "")' \
     | column -t -s $'\t' \
-    | fzf $FZF_THEME \
+    | fzf "${FZF_THEME[@]}" \
           --border=rounded \
           --border-label='  ◈  CLONE  ' \
           --prompt='  ❯ ' \

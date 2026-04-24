@@ -28,10 +28,10 @@ nvm()  { _lazy_nvm; command nvm "$@" }
 node() { _lazy_nvm; command node "$@" }
 npm()  { _lazy_nvm; command npm "$@" }
 
-# UI theme for fzf
-export FZF_THEME="
+# UI theme for fzf — array so zsh word-splits correctly at call sites
+FZF_THEME=(
   --color=fg:#00ff00,bg:#000000,hl:#00ff00
   --color=fg+:#00ff00,bg+:#001100,hl+:#00ff00
   --color=border:#00ff00
   --color=prompt:#00ff00,pointer:#00ff00,marker:#00ff00
-"
+)
