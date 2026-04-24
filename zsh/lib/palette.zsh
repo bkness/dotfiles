@@ -11,6 +11,7 @@ _palette_entries() {
   print -r "🆕  newproj           │ cmd    │ Create a new project"
   print -r "🔄  reload            │ cmd    │ Restart shell"
   print -r "📝  quick_edit_readme  │ cmd    │ Edit README in current project"
+  print -r "📂  _explorer_widget  │ cmd    │ Browse files (Ctrl+E)"
 
   # --- Git ---
   print -r "🌿  chbr              │ git    │ Create and switch to new branch"
