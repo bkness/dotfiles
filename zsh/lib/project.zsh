@@ -67,7 +67,7 @@ project_ui() {
     "  🧪  Detect Project Type" \
     "  🛠   Settings" \
     | grep -v '^\s*─\+\s*$' \
-    | fzf $FZF_THEME \
+    | fzf "${FZF_THEME[@]}" \
         --border=rounded \
         --border-label='  ◈  DEV  ' \
         --header="$header" \
@@ -112,7 +112,7 @@ project_ui_open() {
 
   local dir
   dir=$(cat "$DEV_CACHE" \
-    | fzf $FZF_THEME \
+    | fzf "${FZF_THEME[@]}" \
           --border=rounded \
           --border-label='  ◈  OPEN PROJECT  ' \
           --prompt='  ❯ ' \
@@ -128,7 +128,7 @@ project_ui_open_and_boot() {
 
   local dir
   dir=$(cat "$DEV_CACHE" \
-    | fzf $FZF_THEME \
+    | fzf "${FZF_THEME[@]}" \
           --border=rounded \
           --border-label='  ◈  OPEN + START  ' \
           --prompt='  ❯ ' \
@@ -151,7 +151,7 @@ project_ui_open_and_boot() {
 project_ui_list() {
   local dir
   dir=$(cat "$DEV_CACHE" \
-    | fzf $FZF_THEME \
+    | fzf "${FZF_THEME[@]}" \
           --border=rounded \
           --border-label='  ◈  ALL PROJECTS  ' \
           --prompt='  ❯ ' \
@@ -166,7 +166,7 @@ project_ui_recent() {
 
   local dir
   dir=$(cat "$DEV_RECENT" \
-    | fzf $FZF_THEME \
+    | fzf "${FZF_THEME[@]}" \
           --border=rounded \
           --border-label='  ◈  RECENT  ' \
           --prompt='  ❯ ' \

@@ -1,7 +1,46 @@
-project_boot_python() {
-  echo "🐍 Python plugin activated"
+_python_boot_pref_file="$HOME/.config/forged/python-boot-pref"
 
-  # Guard: ensure python3 is available
+_python_get_pref() {
+  [[ -f "$_python_boot_pref_file" ]] && cat "$_python_boot_pref_file"
+}
+
+_python_save_pref() {
+  mkdir -p "$(dirname "$_python_boot_pref_file")"
+  echo "$1" > "$_python_boot_pref_file"
+}
+
+project_boot_python() {
+  local pref
+  pref=$(_python_get_pref)
+
+  # First time ever — ask how they want it to behave
+  if [[ -z "$pref" ]]; then
+    echo ""
+    echo "  🐍 Python project detected"
+    echo ""
+    echo "  How should Forged handle Python projects?"
+    echo "    1.  Always auto-boot (activate venv + install)"
+    echo "    2.  Always ask me first"
+    echo "    3.  Skip for now"
+    echo ""
+    local reply
+    read "reply?  Choice (1/2/3): "
+    case "$reply" in
+      1) pref="always"; _python_save_pref "always" ;;
+      2) pref="ask";    _python_save_pref "ask" ;;
+      *) echo "  ⏭  Skipping — you can change this in ~/.config/forged/python-boot-pref"; return 0 ;;
+    esac
+    echo "  ✅ Saved — you can change this anytime by editing ~/.config/forged/python-boot-pref"
+    echo ""
+  fi
+
+  # If ask mode, prompt each time
+  if [[ "$pref" == "ask" ]]; then
+    local reply
+    read "reply?  🐍 Boot Python env here? (y/n): "
+    [[ "$reply" != "y" ]] && return 0
+  fi
+
   if ! command -v python3 >/dev/null; then
     echo "❌ python3 not found"
     return 1
@@ -9,47 +48,20 @@ project_boot_python() {
 
   # Create venv if missing
   if [[ ! -d .venv ]]; then
-    local reply
-    read "reply?🔧 Create virtual environment? (y/n): "
-    if [[ "$reply" == "y" ]]; then
-      python3 -m venv .venv || { echo "❌ Failed to create venv"; return 1; }
-    else
-      echo "⏭ Skipping venv setup"
-      return 0
-    fi
+    echo "  🔧 Creating virtual environment..."
+    python3 -m venv .venv || { echo "❌ Failed to create venv"; return 1; }
   fi
 
-  # Activate FIRST, then install
   source .venv/bin/activate || { echo "❌ Failed to activate venv"; return 1; }
-  echo "✅ Virtual environment activated"
+  echo "  ✅ venv activated"
 
-  # Install requirements if the file exists
+  # Install requirements if present
   if [[ -f requirements.txt ]]; then
     local reply
-    read "reply?📥 Install requirements? (y/n): "
+    read "reply?  📥 Install requirements.txt? (y/n): "
     if [[ "$reply" == "y" ]]; then
-      pip install -r requirements.txt || { echo "❌ pip install failed"; return 1; }
-    else
-      echo "⏭ Skipping pip install"
+      pip install -r requirements.txt -q && echo "  ✅ Dependencies installed"
     fi
-  else
-    echo "⚠️  No requirements.txt found — skipping install"
-  fi
-
-  # Open editor in background
-  if command -v code >/dev/null; then
-    if ! nohup code . >/dev/null 2>&1 &; then
-      echo "⚠️  Failed to launch VS Code"
-    fi
-  else
-    echo "⚠️  VS Code ('code') not found — skipping editor launch"
-  fi
-
-  # Run main entry point if it exists
-  if [[ -f main.py ]]; then
-    python3 main.py
-  else
-    echo "⚠️  No main.py found — dropping into shell"
   fi
 }
 
