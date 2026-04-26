@@ -24,9 +24,11 @@ _lazy_nvm() {
   [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
 }
 
-nvm()  { _lazy_nvm; command nvm "$@" }
-node() { _lazy_nvm; command node "$@" }
-npm()  { _lazy_nvm; command npm "$@" }
+nvm()    { typeset -f _lazy_nvm >/dev/null 2>&1 && _lazy_nvm; command nvm "$@" }
+node()   { typeset -f _lazy_nvm >/dev/null 2>&1 && _lazy_nvm; command node "$@" }
+npm()    { typeset -f _lazy_nvm >/dev/null 2>&1 && _lazy_nvm; command npm "$@" }
+npx()    { typeset -f _lazy_nvm >/dev/null 2>&1 && _lazy_nvm; command npx "$@" }
+forged() { typeset -f _lazy_nvm >/dev/null 2>&1 && _lazy_nvm; command forged "$@" }
 
 # UI theme for fzf — matches devforge palette in neon-cockpit.zsh
 FZF_THEME=(
