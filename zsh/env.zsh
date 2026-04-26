@@ -28,10 +28,10 @@ nvm()  { _lazy_nvm; command nvm "$@" }
 node() { _lazy_nvm; command node "$@" }
 npm()  { _lazy_nvm; command npm "$@" }
 
-# UI theme for fzf — array so zsh word-splits correctly at call sites
+# UI theme for fzf — matches devforge palette in neon-cockpit.zsh
 FZF_THEME=(
-  --color=fg:#00ff00,bg:#000000,hl:#00ff00
-  --color=fg+:#00ff00,bg+:#001100,hl+:#00ff00
-  --color=border:#00ff00
-  --color=prompt:#00ff00,pointer:#00ff00,marker:#00ff00
+  --color=bg+:#0d1f12,bg:#030a06,fg:#00ADD8,fg+:#00ff41
+  --color=hl:#00ADD8,hl+:#00ADD8,pointer:#00ff41,marker:#FF4500
+  --color=border:#1a3a22,prompt:#00ff41,info:#FFD43B,header:#4a7a55
+  --pointer=▶ --marker=●
 )
