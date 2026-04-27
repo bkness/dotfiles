@@ -3,11 +3,6 @@
 # Project Templates
 # ---------------------------------------
 
-for file in ~/dev/dotfiles/zsh/plugins/project/*.zsh; do
-  name="${file:t:r}"
-  register_plugin "project/$name" "project_boot_${name}"
-done
-
 project_template_node() {
   mkdir -p src
   echo "console.log('Hello World');" > src/index.js
@@ -61,20 +56,18 @@ project_ui() {
     "  💼  List All Projects" \
     "  📝  Edit Readme" \
     "  🐙  GitHub" \
-    "  ──────────────────" \
     "  🔄  Refresh Cache" \
     "  🧹  Clear Cache" \
     "  🧪  Detect Project Type" \
     "  🛠   Settings" \
-    | grep -v '^\s*─\+\s*$' \
     | fzf "${FZF_THEME[@]}" \
         --border=rounded \
         --border-label='  ◈  DEV  ' \
         --header="$header" \
         --header-first \
-        --prompt='  ❯ ' \
-        --preview='printf "\033[32m%s\033[0m\n" {}' \
-        --preview-window=down:2:wrap) || return
+        --height=85% \
+        --no-preview \
+        --prompt='  ❯ ') || return
 
   case "${choice## }" in
     "📁  Open Project")      project_ui_open ;;

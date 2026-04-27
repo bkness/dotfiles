@@ -16,20 +16,10 @@ setopt SHARE_HISTORY
 
 
 # ---------------------------------------
-# fzf configuration
+# fzf keybindings + completion
+# (colors + zstyles owned by plugins/theme/neon-cockpit.zsh)
 # ---------------------------------------
 
-export FZF_DEFAULT_OPTS="
-  --height 50%
-  --layout=reverse
-  --border=rounded
-  --pointer=▶
-  --marker=◆
-  --info=inline
-  --scroll-off=3
-"
-
-# Load fzf keybindings + completion
 if [[ -f /usr/share/fzf/key-bindings.zsh ]]; then
   source /usr/share/fzf/key-bindings.zsh
   source /usr/share/fzf/completion.zsh
@@ -38,33 +28,7 @@ elif [[ -f ~/.fzf/shell/key-bindings.zsh ]]; then
   source ~/.fzf/shell/completion.zsh
 fi
 
-# ---------------------------------------
-# fzf-tab tuning
-# ---------------------------------------
-# completions FIRST
-zstyle ':fzf-tab:*' fzf-flags \
-  --margin=1 \
-  --padding=1 \
-  --info=inline \
-  --color=fg:#00ff00,bg:#000000,hl:#00ff00 \
-  --color=fg+:#00ff00,bg+:#001100,hl+:#00ff00 \
-  --color=border:#00ff00 \
-  --color=prompt:#00ff00,pointer:#00ff00,marker:#00ff00
-
-# Enable group switching with < and >
-zstyle ':fzf-tab:*' switch-group '<' '>'
-
-# Directory preview (Matrix-style)
-zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
-
-# File preview (with bat)
-zstyle ':fzf-tab:complete:*:*' fzf-preview 'bat --color=always --style=plain $realpath 2>/dev/null || eza -la --color=always $realpath'
-
-# Colorize file lists
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
-
-# Don't show Zsh's built-in menu
-zstyle ':completion:*' menu no
 
 # ---------------------------------------
 # Enhanced Ctrl-R history search
@@ -74,15 +38,7 @@ fzf-history-widget() {
   BUFFER=$(fc -l 1 \
     | sed 's/^[ ]*[0-9]*[ ]*//' \
     | fzf --tac --no-sort \
-        --preview='
-          echo -e "\033[32mSelected:\033[0m {}"
-          echo
-          if [[ $(file --mime {}) == *text* ]]; then
-            bat --color=always --style=plain {}
-          else
-            ls -la --color=always {}
-          fi
-        ' \
+        --preview='echo {} | bat --language=bash --color=always --style=plain' \
         --preview-window=right:60%:wrap \
         --height 70% --reverse --border \
         --prompt="History > " \
@@ -98,43 +54,6 @@ fzf-history-widget() {
 zle -N fzf-history-widget
 bindkey '^R' fzf-history-widget
 
-# fzf-history-widget() {
-#   BUFFER=$(fc -l 1 \
-#   | sed 's/^[ ]*[0-9]*[ ]*//' \
-#   | fzf --tac --no-sort \
-#         --preview 'echo {}' \
-#         --preview-window=right:60%:wrap \
-#         --height 70% --reverse --border \
-#         --prompt="History > " \
-#         --preview='
-#         echo -e "\033[32mSelected:\033[0m {}"
-#         echo
-#         if [[ $(file --mime {}) == *text* ]]; then
-#           bat --color=always --style=plain {}
-#         else
-#           ls -la --color=always {}
-#         fi
-#         ' \
-#         --preview-window=down:3:wrap \
-#         --color=fg:#00ff00,bg:#000000,hl:#00ff0 \
-#         --color=fg+:#00ff00,bg+:#001100,hl+:#00ff00 \
-#         --color=border:#00ff00 \
-#         --color=prompt:#00ff00,pointer:#00ff00,marker:#00ff00 \
-#   CURSOR=$#BUFFER \
-#   zle reset-prompt \
-
-#         --preview-window=down:5:wrap \
-#         --color=fg:#00ff00,bg:#000000,hl:#00ff0 \
-#         --color=fg+:#00ff00,bg+:#001100,hl+:#00ff00 \
-#         --color=border:#00ff00 \
-#         --color=prompt:#00ff00,pointer:#00ff00,marker:#00ff00 \
-#         --border-label="History Search") \
-#   CURSOR=$#BUFFER 
-#   zle reset-prompt
-# }
-
-# zle -N fzf-history-widget
-# bindkey '^R' fzf-history-widget
 
 # ---------------------------------------
 # vim keybindings in command line and fzf menus
@@ -181,12 +100,13 @@ add-zsh-hook chpwd _zoxide_lazy
 
 # Open UI dashboard with Ctrl+D
 project_ui_widget() {
+  zle -I
   project_ui
   zle reset-prompt
 }
 
 zle -N project_ui_widget
-bindkey '^D' project_ui_widget
+bindkey '^P' project_ui_widget
 
 # # Preview command function for project dashboard
 # project_visuals_cmd() {
