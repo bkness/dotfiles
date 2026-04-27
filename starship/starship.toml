@@ -49,7 +49,7 @@ dim      = "#2a4a32"
 # ── username ──────────────────────────────────────────────────────────────────
 [username]
 show_always = true
-format      = "[$user](fg:go bold)[@devforge](fg:muted bold) "
+format      = "[bkness](fg:go bold)[@forged](fg:muted bold) "
 
 # ── os icon ───────────────────────────────────────────────────────────────────
 [os]
