@@ -5,7 +5,10 @@ typeset -A _HOOKS
 
 register_hook() {
   local event="$1"
-  local fn="$2"         # fixed: was "2", missing $
+  local fn="$2"
+
+  # Skip if already registered for this event
+  [[ " ${_HOOKS[$event]} " == *" $fn "* ]] && return
 
   if [[ -z "${_HOOKS[$event]}" ]]; then
     _HOOKS[$event]="$fn"

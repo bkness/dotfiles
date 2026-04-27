@@ -76,7 +76,4 @@ Plugins live in `plugins/project/<lang>.zsh`. Each file must:
 
 ## Known Issues / WIP Areas
 
-- `tools.zsh` has malformed `zstyle` blocks (unclosed multi-line strings, stray shell words outside functions). These are work-in-progress and will cause parse errors if syntax-checked as a whole.
-- `lib/project.zsh`'s `project_ui` and `project_ui_open` have broken `cut | fzf` pipelines — the `fzf` call is outside the pipeline and the preview references `${file}` instead of `{}`.
-- `hooks.zsh` line 43 (`Auto-activate Python virtualenv`) is missing a `#` comment marker — that text is a bare word that will cause a syntax error.
 - `future-ideas.md` contains snippet drafts (not active code).

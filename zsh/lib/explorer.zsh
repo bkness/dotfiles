@@ -3,6 +3,7 @@
 # Tab → enter folder  |  Shift+Tab → up  |  Enter → cd or insert path
 # ---------------------------------------
 
+# desc: Ctrl+E file explorer with preview
 _explorer_widget() {
   local current="$PWD"
 
@@ -12,32 +13,39 @@ _explorer_widget() {
     local result
     result=$(
       {
-        [[ "$current" != "/" ]] && printf "%s\t📁  ..\n" "$(dirname "$current")"
-        command ls -1p "$current" 2>/dev/null | grep '/$' | sed 's|/$||' | while IFS= read -r d; do
-          printf "%s/%s\t📁  %s\n" "$current" "$d" "$d"
-        done
-        command ls -1p "$current" 2>/dev/null | grep -v '/$' | while IFS= read -r f; do
-          printf "%s/%s\t    %s\n" "$current" "$f" "$f"
-        done
+        # Parent dir entry
+        [[ "$current" != "/" ]] && printf "%s\t 󰁞  ..\n" "$(dirname "$current")"
+
+        # eza for display — icons + color. Strip ANSI to get plain name for path.
+        eza -1 --icons --color=always --group-directories-first "$current" 2>/dev/null \
+          | while IFS= read -r display; do
+              local plain
+              plain=$(printf '%s' "$display" | sed $'s/\x1b\\[[0-9;]*[mK]//g' | sed 's/^[[:space:]]*//' | xargs)
+              [[ -z "$plain" ]] && continue
+              printf "%s/%s\t%s\n" "$current" "$plain" "$display"
+            done
       } | fzf "${FZF_THEME[@]}" \
           --border=rounded \
           --border-label="  ◈  $crumb  " \
+          --border-label-pos=2 \
           --prompt='  ❯ ' \
-          --header='  Tab → enter   Shift+Tab → up   Enter → open   Ctrl+P → palette' \
+          --header=$'  \e[38;2;0;173;216mTab\e[0m enter   \e[38;2;0;173;216m↑Tab\e[0m back   \e[38;2;0;173;216mEnter\e[0m cd' \
           --header-first \
+          --ansi \
           --delimiter=$'\t' \
           --with-nth=2 \
           --expect='tab,btab' \
+          --color='border:#00ff41,label:#00ff41,header:italic' \
           --preview='
             p={1}
             if [[ -d "$p" ]]; then
-              eza -la --icons -1 "$p" 2>/dev/null || ls -la "$p"
+              eza -la --icons --color=always -1 "$p" 2>/dev/null || ls -la "$p"
             elif [[ -f "$p" ]]; then
               bat --style=plain --color=always --paging=never "$p" 2>/dev/null || cat "$p"
             fi
           ' \
           --preview-window=right:50%:wrap \
-          --preview-label='  Preview  '
+          --preview-label='  ◈  Preview  '
     )
 
     [[ $? -ne 0 ]] && return
