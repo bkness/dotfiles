@@ -76,8 +76,6 @@ autoload -Uz add-zsh-hook
 add-zsh-hook chpwd _hook_chpwd
 
 # Wire on_exit — fires on normal exit and when terminal window is closed (SIGHUP)
-_on_exit_handler() {
-  [[ $SHLVL -eq 1 ]] && fire_hook "on_exit"
-}
-zshexit() { _on_exit_handler }
-TRAPHUP()  { _on_exit_handler }
+# Guard: SHLVL=1 (outermost shell only) + fire_hook must be defined (full env loaded)
+zshexit() { [[ $SHLVL -eq 1 ]] && typeset -f fire_hook > /dev/null && fire_hook "on_exit" }
+TRAPHUP()  { [[ $SHLVL -eq 1 ]] && typeset -f fire_hook > /dev/null && fire_hook "on_exit" }
