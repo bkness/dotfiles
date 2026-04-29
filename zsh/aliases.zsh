@@ -17,6 +17,20 @@ alias gco="git checkout" # desc: Switch branch or restore files
 # GitHub dashboard
 alias ghui="github_ui" # desc: Open GitHub dashboard
 
+# Online / offline status (updates weballtech.com/api/status)
+online()  { curl -sL -X POST https://www.weballtech.com/api/status \
+              -H 'Content-Type: application/json' \
+              -H "Authorization: Bearer $WEBALLTECH_TOKEN" \
+              -d '{"online":true}' > /dev/null && echo "● online" }
+offline() { curl -sL -X POST https://www.weballtech.com/api/status \
+              -H 'Content-Type: application/json' \
+              -H "Authorization: Bearer $WEBALLTECH_TOKEN" \
+              -d '{"online":false}' > /dev/null && echo "○ offline" }
+register_hook "on_exit" "offline"
+
+# Clean shell exit — fires offline then closes
+bye() { offline && exit }
+
 # Shell
 alias c="clear" # desc: Clear terminal
 alias ..="cd .." # desc: Up one directory
