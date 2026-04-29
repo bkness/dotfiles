@@ -39,6 +39,8 @@ for module in env tools aliases dev starship; do
   [[ -f "$file" ]] && source "$file"
 done
 
+source "$HOME/dev/dotfiles/zsh/plugins/theme/neon-cockpit.zsh"
+
 zinit light-mode for \
     zdharma-continuum/zinit-annex-as-monitor \
     zdharma-continuum/zinit-annex-bin-gem-node \

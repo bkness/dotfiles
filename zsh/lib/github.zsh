@@ -37,6 +37,7 @@ _gh_repo_label() {
 # Main menu
 # ---------------------------------------
 
+# desc: Open GitHub dashboard with Ctrl+G
 github_ui() {
   _gh_check || return
 
@@ -77,7 +78,7 @@ github_ui() {
         --header-first \
         --prompt='  ❯ ') || return
 
-  case "${choice## }" in
+  case "${choice##  }" in
     "🌿  Branches")        github_ui_branches ;;
     "📦  Stage & Commit")  github_ui_staging ;;
     "📋  Log")             github_ui_log ;;
@@ -125,7 +126,7 @@ github_ui_repos() {
         --prompt='  ❯ ' \
         --height=30%) || return
 
-  case "${action## }" in
+  case "${action##  }" in
     "🔗  Open in browser") gh repo view "$name" --web ;;
     "📥  Clone")
       local dest="$DEV_ROOT/$(basename $name)"
@@ -166,7 +167,7 @@ github_ui_prs() {
         --prompt='  ❯ ' \
         --height=30%) || return
 
-  case "${action## }" in
+  case "${action##  }" in
     "🌿  Checkout")        gh pr checkout "$number" ;;
     "🔗  Open in browser") gh pr view "$number" --web ;;
     "👁   View")           gh pr view "$number" ;;
@@ -186,7 +187,7 @@ github_ui_issues() {
         --prompt='  ❯ ' \
         --height=25%) || return
 
-  [[ "${header_action## }" == "🆕  Create Issue" ]] && { _github_create_issue; return; }
+  [[ "${header_action##  }" == "🆕  Create Issue" ]] && { _github_create_issue; return; }
 
   local selected
   selected=$(gh issue list --limit 30 \
@@ -217,7 +218,7 @@ github_ui_issues() {
         --prompt='  ❯ ' \
         --height=35%) || return
 
-  case "${action## }" in
+  case "${action##  }" in
     "🔗  Open in browser") gh issue view "$number" --web ;;
     "👁   View")           gh issue view "$number" ;;
     "🏷   Label")
@@ -253,7 +254,7 @@ github_ui_new() {
         --border-label='  ◈  VISIBILITY  ' \
         --prompt='  ❯ ' \
         --height=25%) || return
-  vis="${vis## }"
+  vis="${vis##  }"
 
   if _in_github_repo; then
     local reply
@@ -318,12 +319,12 @@ github_ui_branches() {
         --prompt='  ❯ ' \
         --height=30%) || return
 
-  case "${action## }" in
+  case "${action##  }" in
     "🔀  Switch")
       local branch
-      branch=$(git branch --all --color=always \
+      branch=$(git branch --all --no-color \
         | grep -v 'HEAD' \
-        | sed 's|remotes/origin/||' \
+        | sed 's|remotes/origin/||; s|^[* ]*||' \
         | sort -u \
         | fzf "${FZF_THEME[@]}" \
             --ansi \
@@ -333,11 +334,12 @@ github_ui_branches() {
             --preview='git log --oneline --graph --color=always {-1} 2>/dev/null | head -20' \
             --preview-window=right:55% \
             --preview-label='  Log  ') || return
-      git switch "${branch//\* /}" 2>/dev/null || git checkout "${branch//\* /}"
+      git switch "$branch" 2>/dev/null || git checkout "$branch"
       ;;
     "🌱  Create")
       local name
-      echo -n "  Branch name: "; read -r name
+      echo -n "  Branch name: " >/dev/tty
+      read -r name </dev/tty || return
       [[ -n "$name" ]] && git switch -c "$name" && echo "  ✅ Created and switched to $name"
       ;;
     "🗑   Delete")
@@ -352,7 +354,8 @@ github_ui_branches() {
             --preview='git log --oneline --color=always {-1} | head -10' \
             --preview-window=right:55%) || return
       local clean="${branch//\* /}"
-      echo -n "  Delete '$clean'? (y/n): "; read -r confirm
+      echo -n "  Delete '$clean'? (y/n): " >/dev/tty
+      read -r confirm </dev/tty || return
       [[ "$confirm" == "y" ]] && git branch -d "$clean" && echo "  ✅ Deleted $clean"
       ;;
   esac
@@ -385,8 +388,8 @@ github_ui_staging() {
     git add "$file" && echo "  ● Staged: $file"
   done
 
-  echo -n "\n  Commit message (blank to skip): "
-  read -r msg
+  echo -n "\n  Commit message (blank to skip): " >/dev/tty
+  read -r msg </dev/tty || return
   [[ -n "$msg" ]] && git commit -m "$msg" && echo "  ✅ Committed: $msg"
 }
 
@@ -493,8 +496,7 @@ _github_create_issue() {
 # ── keybind — Ctrl+G ─────────────────────────────────────────
 _github_ui_widget() {
   zle -I
-  github_ui
-  zle reset-prompt
+  { github_ui } always { zle reset-prompt }
 }
 zle -N _github_ui_widget
 bindkey '^G' _github_ui_widget

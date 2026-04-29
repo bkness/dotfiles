@@ -11,13 +11,11 @@ register_plugin() {
     PLUGIN_PRIORITY[$name]="$priority"
 }
 
-
   plugin_exists()   {
     [[ -n "${PLUGIN_REGISTRY[$1]}" ]]   
   }
 
   
-
 # External plugins (zinit)
 ZINIT_PLUGINS=(
   zsh-users/zsh-completions
