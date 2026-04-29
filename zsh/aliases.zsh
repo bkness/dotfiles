@@ -32,14 +32,14 @@ offline() { curl -sL -X POST https://www.weballtech.com/api/status \
 _shell_open() {
   local count=$(( $(cat ~/.shell_count 2>/dev/null || echo 0) + 1 ))
   echo $count > ~/.shell_count
-  [[ $count -eq 2 ]] && online &!
+  [[ $count -eq 1 ]] && online &!
 }
 
 _shell_close() {
   local count=$(( $(cat ~/.shell_count 2>/dev/null || echo 1) - 1 ))
   [[ $count -lt 0 ]] && count=0
   echo $count > ~/.shell_count
-  [[ $count -le 1 ]] && offline
+  [[ $count -le 0 ]] && offline
 }
 
 register_hook "on_exit" "_shell_close"
