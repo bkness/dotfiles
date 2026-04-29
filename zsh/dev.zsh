@@ -13,7 +13,7 @@ boot_project() {
   "$fn" || return
 }
 
-# Create a new project
+# desc: Create a new project
 newproj() {
   local name dir
 
@@ -98,7 +98,7 @@ EOF
   add-recent
 }
 
-# Full "Project Open + Dev Start" command
+# desc: Full "Project Open + Dev Start" command
 dev() {
   local dir
 
@@ -133,22 +133,18 @@ dev() {
   boot_project "$type"
 }
 
-# Change branch
-chbr() {
-  echo "$fg[magenta]New branch name?$reset_color"
-  read "branch?prompt" 
-
-  if [[ -n "$branch" ]]; then
-    git switch -c "$branch"
-  else
-    echo "❌ $fg[red]Branch name required$reset_color"
-  fi
+# desc: Change branch
+cb() {
+  local branch
+  read "branch? New branch name: "
+  [[ -z "$branch" ]] && { echo "❌ Branch name required"; return 1; }
+  git switch -c "$branch" || return
   refresh-dev-cache
   add-recent
 }
 
-# Change to main or master branch
-cmst() {
+# desc: Change to main or master branch
+cm() {
   if git show-ref --verify --quiet refs/heads/main; then
     git switch main
   elif git show-ref --verify --quiet refs/heads/master; then
@@ -160,7 +156,7 @@ cmst() {
   add-recent
 }
 
-# Fuzzy branch switching  
+# desc: Fuzzy branch switching  
 gbr() {
   local branch
   branch=$(git branch --all | sed 's/^[* ]*//' | fzf) || return
@@ -169,7 +165,7 @@ gbr() {
   add-recent
 }
 
-# Opens fuzzy, jumps instantly anywhere you've been
+# desc: Opens fuzzy, jumps instantly anywhere you've been
 j() {
   if command -v zoxide >/dev/null; then
     cd "$(zoxide query -i)"
@@ -181,8 +177,10 @@ j() {
 }
 
 #--------------------------------------
-# 
+# Fuzzy project picker — lists recent + cached projects, opens in one step
 #--------------------------------------
+
+# desc: Recent + cached projects picker
 p() {
   command -v fzf >/dev/null || return 1
   command -v fd >/dev/null || return 1
@@ -198,7 +196,7 @@ p() {
   refresh-dev-cache
 }
 
-# Open + Run workflow
+# desc: Open + Run workflow
 pr() {
   p || return
   command -v code >/dev/null && nohup code . >/dev/null 2>&1 &
@@ -216,12 +214,12 @@ fi
 # Dev utilities
 # ---------------------------------------
 
-# mkdir + cd in one step
+# #desc: mkdir + cd in one step
 take() {
   mkdir -p "$1" && cd "$1"
 }
 
-# Kill whatever is running on a port
+# desc: Kill whatever is running on a port
 killport() {
   local port="${1:?Usage: killport <port>}"
   local pid
@@ -230,12 +228,12 @@ killport() {
   kill -9 $pid
 }
 
-# Show all listening ports
+# desc: Show all listening ports
 ports() {
   lsof -iTCP -sTCP:LISTEN -n -P | awk 'NR==1 || /LISTEN/'
 }
 
-# Quick local HTTP server
+# desc: Quick local HTTP server
 serve() {
   local port="${1:-8080}"
   echo "Serving $(pwd) on http://localhost:$port"
@@ -248,7 +246,7 @@ serve() {
   fi
 }
 
-# Load a .env file into the current shell
+# desc: Load a .env file into the current shell
 envload() {
   local file="${1:-.env}"
   [[ ! -f "$file" ]] && { echo "❌ $file not found"; return 1; }
@@ -258,7 +256,3 @@ envload() {
   echo "✅ Loaded $file"
 }
 
-# Reload shell config without restarting
-reload() {
-  exec zsh
-}
