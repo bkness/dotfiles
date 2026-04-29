@@ -58,6 +58,17 @@ _shell_close() {
 
 register_hook "on_exit" "_shell_close"
 
+# Forged scan wrapper — runs scan then pushes cache to weballtech
+scan() {
+  forged scan "$@"
+  local cache="$HOME/.forged-scan-cache.json"
+  [[ -f "$cache" ]] && curl -sL -X POST https://www.weballtech.com/api/forged-status \
+    -H 'Content-Type: application/json' \
+    -H "Authorization: Bearer $WEBALLTECH_TOKEN" \
+    -d "{\"type\":\"scanner\",\"data\":$(cat $cache)}" \
+    > /dev/null &!
+}
+
 # Clean shell exit
 bye() { exit }
 
