@@ -5,61 +5,69 @@
 
 _palette_entries() {
   # --- Workflow commands ---
-  print -r "⚡  dev               │ cmd    │ Open project picker"
-  print -r "📁  p                 │ cmd    │ Fuzzy pick any project"
-  print -r "🚀  pr                │ cmd    │ Pick project + open in editor"
-  print -r "🆕  newproj           │ cmd    │ Create a new project"
-  print -r "🔄  reload            │ cmd    │ Restart shell"
-  print -r "📝  quick_edit_readme  │ cmd    │ Edit README in current project"
-  print -r "📂  _explorer_widget  │ cmd    │ Browse files (Ctrl+E)"
+  print -r "⚡  dev                      │ cmd    | Open project picker"
+  print -r "📁  p                       │ cmd    │ Fuzzy pick any project"
+  print -r "🚀  pr                      │ cmd    │ Pick project + open in editor"
+  print -r "🆕  newproj                 │ cmd    │ Create a new project"
+  print -r "🔄  reload                  │ cmd    │ Restart shell"
+  print -r "📝  quick_edit_readme       │ cmd    │ Edit README in current project"
+  print -r "📂  _explorer_widget        │ cmd    │ Browse files (Ctrl+E)"
+ 
+  # --- Forged CLI ---
+  print -r "🔒  forged gen pass         │ forged │ Generate secure password"
+  print -r "🔑  forged gen secret       │ forged │ Generate 32-byte hex secret (JWT/API keys)"
+  print -r "🔢  forged gen pin          │ forged │ Generate 6-digit PIN"
+  print -r "🆔  forged gen uuid         │ forged │ Generate UUID v4"
+  print -r "🔍  forged scan             │ forged │ Scan deps for typosquats + suspicious scripts"
+  print -r "🚀  forged init             │ forged │ Bootstrap dev environment"
 
   # --- Git ---
-  print -r "🌿  chbr              │ git    │ Create and switch to new branch"
-  print -r "🏠  cmst              │ git    │ Switch to main or master"
-  print -r "🔀  gbr               │ git    │ Fuzzy switch any branch"
-  print -r "📊  gs                │ git    │ git status"
-  print -r "📤  gp                │ git    │ git push"
-  print -r "📥  gpl               │ git    │ git pull"
-  print -r "📋  gl                │ git    │ git log (graph)"
-
-  # --- GitHub ---
-  print -r "🐙  ghui              │ github │ GitHub dashboard"
-  print -r "🔀  github_ui_prs     │ github │ Pull requests"
-  print -r "🐛  github_ui_issues  │ github │ Issues"
-  print -r "📋  github_ui_repos   │ github │ My repos"
-  print -r "📥  github_ui_clone   │ github │ Clone a repo"
-  print -r "🆕  github_ui_new     │ github │ Create new repo"
-
-  # --- Dev utilities ---
-  print -r "🔌  killport          │ util   │ Kill process on a port"
-  print -r "🌐  serve             │ util   │ Start local HTTP server"
-  print -r "🔍  ports             │ util   │ Show all listening ports"
-  print -r "📦  envload           │ util   │ Load .env into current shell"
-  print -r "📂  take              │ util   │ mkdir + cd in one step"
-  print -r "🔭  j                 │ util   │ Jump anywhere (zoxide)"
-
-  # --- Shell introspection ---
-  print -r "🔬  vared PLUGIN_REGISTRY │ debug │ Inspect plugin registry"
-  print -r "🔬  vared _HOOKS          │ debug │ Inspect hook registry"
-  print -r "⚙️   zprof                │ debug │ Profile shell startup"
+  print -r "🌿  cb                      │ git    │ Create and switch to new branch"
+  print -r "🏠  cm                      │ git    │ Switch to main or master"
+  print -r "🔀  gbr                     │ git    │ Fuzzy switch any branch"
+  print -r "📊  gs                      │ git    │ git status"
+  print -r "📤  gp                      │ git    │ git push"
+  print -r "📥  gpl                     │ git    │ git pull"
+  print -r "📋  gl                      │ git    │ git log (graph)"
+  
+  # --- GitHub ---      
+  print -r "🐙  ghui                    │ github │ GitHub dashboard"
+  print -r "🔀  github_ui_prs           │ github │ Pull requests"
+  print -r "🐛  github_ui_issues        │ github │ Issues"
+  print -r "📋  github_ui_repos         │ github │ My repos"
+  print -r "📥  github_ui_clone         │ github │ Clone a repo"
+  print -r "🆕  github_ui_new           │ github │ Create new repo"
+  
+  # --- Dev utilities ---      
+  print -r "🔌  killport                │ util   │ Kill process on a port"
+  print -r "🌐  serve                   │ util   │ Start local HTTP server"
+  print -r "🔍  ports                   │ util   │ Show all listening ports"
+  print -r "📦  envload                 │ util   │ Load .env into current shell"
+  print -r "📂  take                    │ util   │ mkdir + cd in one step"
+  print -r "🔭  j                       │ util   │ Jump anywhere (zoxide)"
+  
+  # --- Shell introspection ---  
+  print -r "🔬  vared PLUGIN_REGISTRY   │ debug   │ Inspect plugin registry"
+  print -r "🔬  vared _HOOKS            │ debug   │ Inspect hook registry"
+  print -r "⚙️   zprof                  │ debug   │ Profile shell startup"
 
   # --- Live: registered plugins ---
   for key in ${(k)PLUGIN_REGISTRY}; do
     local fn="${PLUGIN_REGISTRY[$key]}"
-    print -r "🔌  $fn  │ plugin │ Boot plugin: $key"
+    print -r "🔌  $fn                   │ plugin  │ Boot plugin: $key"
   done
 
   # --- Live: registered hooks ---
   for event in ${(k)_HOOKS}; do
     for fn in ${(z)_HOOKS[$event]}; do
-      print -r "🪝  $fn  │ hook   │ on event: $event"
+      print -r "🪝  $fn                  │ hook     │ on event: $event"
     done
   done
 }
 
 _palette_preview() {
   local line="$1"
-  local cmd=$(echo "$line" | awk -F'│' '{gsub(/^[[:space:][:alnum:][:punct:]]*[[:space:]]/, "", $1); print $1}' | xargs)
+  local cmd=$(echo "$line" | awk -F'     │' '{gsub(/^[[:space:][:alnum:][:punct:]]*[[:space:]]/, "", $1); print $1}' | xargs)
   local category=$(echo "$line" | awk -F'│' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2}')
   local desc=$(echo "$line" | awk -F'│' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $3); print $3}')
 

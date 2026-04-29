@@ -34,6 +34,7 @@ zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 # Enhanced Ctrl-R history search
 # ---------------------------------------
 
+# desc: Enhanced Ctrl-R history search with fzf preview
 fzf-history-widget() {
   BUFFER=$(fc -l 1 \
     | sed 's/^[ ]*[0-9]*[ ]*//' \
@@ -56,24 +57,11 @@ bindkey '^R' fzf-history-widget
 
 
 # ---------------------------------------
-# vim keybindings in command line and fzf menus
-# ---------------------------------------
-
-
-# ---------------------------------------
 # Back button out of fzf menus
 # ---------------------------------------
 add-back-option() {
   printf "%s\n" "$@" "Back"
 }
-
-#---------------------------------------
-# Git Widget for fzf menus
-#---------------------------------------
-# git_widget() {
-#   local branches
-#   branches=$(git branch --all --color=always) || return 1
-# }
 
 # ---------------------------------------
 # Fuzzy directory jump
@@ -98,7 +86,7 @@ add-zsh-hook chpwd _zoxide_lazy
 # Project dashboard
 # ---------------------------------------
 
-# Open UI dashboard with Ctrl+D
+# desc: Open project dashboard (bind manually or via palette)
 project_ui_widget() {
   zle -I
   project_ui
@@ -106,7 +94,6 @@ project_ui_widget() {
 }
 
 zle -N project_ui_widget
-bindkey '^P' project_ui_widget
 
 # # Preview command function for project dashboard
 # project_visuals_cmd() {

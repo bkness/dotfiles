@@ -69,7 +69,7 @@ project_ui() {
         --no-preview \
         --prompt='  ❯ ') || return
 
-  case "${choice## }" in
+  case "${choice#"  "}" in
     "📁  Open Project")      project_ui_open ;;
     "🚀  Open + Start")      project_ui_open_and_boot ;;
     "🆕  Create Project")    newproj ;;
@@ -188,4 +188,47 @@ quick_edit_readme() {
   local readme="${PWD}/README.md"
   [[ ! -f "$readme" ]] && echo "# $(basename "$PWD")" > "$readme"
   ${EDITOR:-vim} "$readme"
+}
+
+# ---------------------------------------
+# Batch Repo Scanner
+# ---------------------------------------
+
+scan-repos() {
+  if [[ $# -eq 0 ]]; then
+    echo "Usage: scan-repos <repo1> <repo2> ..."
+    echo "Repos are resolved relative to \$DEV_ROOT (${DEV_ROOT:-~/dev/projects})"
+    return 1
+  fi
+
+  # ensure NVM + forged are available
+  if ! command -v forged &>/dev/null; then
+    [[ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]] && source "${NVM_DIR:-$HOME/.nvm}/nvm.sh" --no-use
+    nvm use default --silent 2>/dev/null
+  fi
+
+  if ! command -v forged &>/dev/null; then
+    echo "❌ forged not found — run 'nvm use default' and try again"
+    return 1
+  fi
+
+  local root="${DEV_ROOT:-$HOME/dev/projects}"
+  echo "🔍 Scanning $# repo(s) — this may take a little while...\n"
+
+  local failed=()
+  for repo in "$@"; do
+    local repo_path="$root/$repo"
+    echo "━━━ $repo ━━━"
+    if [[ ! -d "$repo_path" ]]; then
+      echo "  ⚠️  Not found: $repo_path"
+      failed+=("$repo")
+    else
+      forged scan "$repo_path"
+    fi
+    echo
+  done
+
+  if [[ ${#failed[@]} -gt 0 ]]; then
+    echo "⚠️  Not found: ${failed[*]}"
+  fi
 }
