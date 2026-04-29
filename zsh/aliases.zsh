@@ -26,10 +26,26 @@ offline() { curl -sL -X POST https://www.weballtech.com/api/status \
               -H 'Content-Type: application/json' \
               -H "Authorization: Bearer $WEBALLTECH_TOKEN" \
               -d '{"online":false}' > /dev/null && echo "○ offline" }
-register_hook "on_exit" "offline"
 
-# Clean shell exit — fires offline then closes
-bye() { offline && exit }
+# Shell counter — accounts for Claude shell (baseline = 1)
+# online triggers at 2, offline triggers back at 1
+_shell_open() {
+  local count=$(( $(cat ~/.shell_count 2>/dev/null || echo 0) + 1 ))
+  echo $count > ~/.shell_count
+  [[ $count -eq 2 ]] && online &!
+}
+
+_shell_close() {
+  local count=$(( $(cat ~/.shell_count 2>/dev/null || echo 1) - 1 ))
+  [[ $count -lt 0 ]] && count=0
+  echo $count > ~/.shell_count
+  [[ $count -le 1 ]] && offline
+}
+
+register_hook "on_exit" "_shell_close"
+
+# Clean shell exit
+bye() { exit }
 
 # Shell
 alias c="clear" # desc: Clear terminal
