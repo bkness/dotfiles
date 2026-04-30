@@ -63,12 +63,8 @@ _FORGED_PROJECTS_CACHE="${XDG_CONFIG_HOME:-$HOME/.config}/forged/projects"
 
 # Ensure the project scope is available — prompt once if not
 _gh_ensure_project_scope() {
-  gh api user --silent 2>/dev/null || return 1
-  # Try a lightweight Projects v2 query — fails if scope missing
   gh api graphql -f query='{ viewer { projectsV2(first:1) { nodes { id } } } }' \
-    --silent >/dev/null 2>&1 && return 0
-  echo "  ⚠️  GitHub Projects scope required. Re-authenticating..." >&2
-  gh auth refresh -s project 2>/dev/null
+    --silent >/dev/null 2>&1
 }
 
 # Returns project node ID for current repo, auto-creating if needed
@@ -732,6 +728,7 @@ github_ui_open_pr() {
   echo -n "  Additional body (blank to skip): " >/dev/tty; read -r extra </dev/tty
   [[ -n "$extra" ]] && body="${body}\n\n${extra}"
 
+  git push origin HEAD 2>/dev/null || git push --set-upstream origin HEAD
   gh pr create --title "$title" --body "$(printf "$body")" \
     && echo "  ✅ PR created${number:+ — will close #$number on merge}"
   [[ -n "$number" ]] && _gh_project_set_status "$number" "In Review" &!
