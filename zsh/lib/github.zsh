@@ -126,6 +126,18 @@ _gh_get_or_create_project() {
     }" --jq '.data.createProjectV2.projectV2.id' 2>/dev/null)
   [[ -z "$new_id" ]] && return 1
 
+  # Link the repo to the project so issues appear automatically
+  local repo_node_id
+  repo_node_id=$(gh api "repos/${repo}" --jq '.node_id' 2>/dev/null)
+  if [[ -n "$repo_node_id" ]]; then
+    gh api graphql -f query="
+      mutation {
+        linkProjectV2ToRepository(input: { projectId: \"$new_id\", repositoryId: \"$repo_node_id\" }) {
+          repository { id }
+        }
+      }" >/dev/null 2>&1
+  fi
+
   echo "${repo}=${new_id}" >> "$_FORGED_PROJECTS_CACHE"
   echo "  ✅ Created project board \"$repo_name\"" >&2
   echo "$new_id"
