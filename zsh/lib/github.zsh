@@ -57,6 +57,7 @@ github_ui() {
       "  🔗  Open in Browser"
       "  🔀  Pull Requests"
       "  🐛  Issues"
+      "  📬  Open PR"
       "  💬  Messages"
       "  📊  Repo Status"
       "  🔄  Sync Fork"
@@ -85,6 +86,7 @@ github_ui() {
     "🔗  Open in Browser") gh repo view --web ;;
     "🔀  Pull Requests")   github_ui_prs ;;
     "🐛  Issues")          github_ui_issues ;;
+    "📬  Open PR")         github_ui_open_pr ;;
     "💬  Messages")        github_ui_messages ;;
     "📊  Repo Status")     github_ui_status ;;
     "🔄  Sync Fork")       github_ui_sync_fork ;;
@@ -209,6 +211,8 @@ github_ui_issues() {
   action=$(printf '%s\n' \
     "  🔗  Open in browser" \
     "  👁   View" \
+    "  🌿  Start Branch" \
+    "  🔀  Open PR" \
     "  🏷   Label" \
     "  ✅  Close" \
     "  💬  Comment" \
@@ -216,11 +220,28 @@ github_ui_issues() {
         --border=rounded \
         --border-label='  ◈  ACTION  ' \
         --prompt='  ❯ ' \
-        --height=35%) || return
+        --height=40%) || return
 
   case "${action##  }" in
     "🔗  Open in browser") gh issue view "$number" --web ;;
     "👁   View")           gh issue view "$number" ;;
+    "🌿  Start Branch")
+      local branch_type
+      branch_type=$(printf '%s\n' "  fix" "  feature" "  chore" \
+        | fzf "${FZF_THEME[@]}" \
+            --border=rounded \
+            --border-label='  ◈  BRANCH TYPE  ' \
+            --prompt='  ❯ ' \
+            --height=25%) || return
+      branch_type="${branch_type##  }"
+      local issue_title
+      issue_title=$(gh issue view "$number" --json title --jq '.title' 2>/dev/null)
+      local slug
+      slug=$(echo "$issue_title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-40)
+      local branch="${branch_type}/${number}-${slug}"
+      git switch -c "$branch" && echo "  ✅ Switched to $branch"
+      ;;
+    "🔀  Open PR")         github_ui_open_pr ;;
     "🏷   Label")
       local label
       label=$(gh label list --json name --jq '.[].name' 2>/dev/null \
@@ -469,13 +490,12 @@ github_ui_messages() {
   esac
 }
 
-# ── issue creation with labels ────────────────────────────────
-# (replaces the Create action in github_ui_issues)
+# ── issue creation with labels + optional branch ─────────────
 _github_create_issue() {
-  echo -n "  Title: "; read -r title
+  echo -n "  Title: " >/dev/tty; read -r title </dev/tty
   [[ -z "$title" ]] && return
 
-  echo -n "  Body (blank to skip): "; read -r body
+  echo -n "  Body (blank to skip): " >/dev/tty; read -r body </dev/tty
 
   local label
   label=$(gh label list --json name,color \
@@ -490,7 +510,47 @@ _github_create_issue() {
   local args=(--title "$title" --body "${body:-""}")
   [[ -n "$label" ]] && args+=(--label "$label")
 
-  gh issue create "${args[@]}" && echo "  ✅ Issue created"
+  local url
+  url=$(gh issue create "${args[@]}" 2>&1) || { echo "  ❌ Failed to create issue"; return 1; }
+  local number
+  number=$(echo "$url" | grep -oE '[0-9]+$')
+  echo "  ✅ Issue #$number created"
+
+  # Offer to create a branch tied to the issue
+  local branch_type
+  branch_type=$(printf '%s\n' "  fix" "  feature" "  chore" \
+    | fzf "${FZF_THEME[@]}" \
+        --border=rounded \
+        --border-label='  ◈  START BRANCH  ' \
+        --prompt='  ❯ ' \
+        --height=25% \
+        --header="Create branch for #$number? (esc to skip)") || return 0
+
+  branch_type="${branch_type##  }"
+  local slug
+  slug=$(echo "$title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-40)
+  local branch="${branch_type}/${number}-${slug}"
+  git switch -c "$branch" && echo "  ✅ Switched to $branch"
+}
+
+# ── open PR with auto Closes #NNN from branch name ───────────
+github_ui_open_pr() {
+  local branch
+  branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  local number
+  number=$(echo "$branch" | grep -oE '[0-9]+' | head -1)
+
+  local body=""
+  [[ -n "$number" ]] && body="Closes #${number}"
+
+  echo -n "  PR title (blank = branch name): " >/dev/tty; read -r title </dev/tty
+  [[ -z "$title" ]] && title="$branch"
+
+  echo -n "  Additional body (blank to skip): " >/dev/tty; read -r extra </dev/tty
+  [[ -n "$extra" ]] && body="${body}\n\n${extra}"
+
+  gh pr create --title "$title" --body "$(printf "$body")" \
+    && echo "  ✅ PR created${number:+ — will close #$number on merge}"
 }
 
 # ── keybind — Ctrl+G ─────────────────────────────────────────
