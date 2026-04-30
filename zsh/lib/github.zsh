@@ -674,15 +674,17 @@ _github_create_issue() {
   echo -n "  Body (blank to skip): " >/dev/tty; read -r body </dev/tty
 
   _gh_ensure_labels
-  local label
-  label=$(gh label list --json name,color \
-    --jq '.[] | "\(.name)"' 2>/dev/null \
-    | fzf "${FZF_THEME[@]}" \
-        --border=rounded \
-        --border-label='  ◈  LABEL  ' \
-        --prompt='  ❯ ' \
-        --height=40% \
-        --header='Select label (esc to skip)')
+  local label _label_list
+  _label_list=$(gh label list --json name --jq '.[].name' 2>/dev/null)
+  if [[ -n "$_label_list" ]]; then
+    label=$(printf '%s\n' "${(f)_label_list}" \
+      | fzf "${FZF_THEME[@]}" \
+          --border=rounded \
+          --border-label='  ◈  LABEL  ' \
+          --prompt='  ❯ ' \
+          --height=40% \
+          --header='Select label (esc to skip)')
+  fi
 
   local assignee
   local _repo _collabs _collab_list
