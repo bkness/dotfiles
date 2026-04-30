@@ -684,8 +684,23 @@ _github_create_issue() {
         --height=40% \
         --header='Select label (esc to skip)')
 
+  local assignee
+  local _self_login
+  _self_login=$(gh api user --jq '.login' 2>/dev/null)
+  local _collabs
+  _collabs=$(gh api "repos/$(gh repo view --json nameWithOwner --jq '.nameWithOwner')/collaborators" --jq '.[].login' 2>/dev/null)
+  assignee=$(printf '%s\n' "$_self_login" ${(f)_collabs} \
+    | sort -u \
+    | fzf "${FZF_THEME[@]}" \
+        --border=rounded \
+        --border-label='  ◈  ASSIGNEE  ' \
+        --prompt='  ❯ ' \
+        --height=30% \
+        --header='Assign to (esc to skip)')
+
   local args=(--title "$title" --body "${body:-""}")
   [[ -n "$label" ]] && args+=(--label "$label")
+  [[ -n "$assignee" ]] && args+=(--assignee "$assignee")
 
   local url
   url=$(gh issue create "${args[@]}" 2>&1) || { echo "  ❌ Failed to create issue"; return 1; }
@@ -726,10 +741,12 @@ github_ui_open_pr() {
   [[ -z "$title" ]] && title="$branch"
 
   echo -n "  Additional body (blank to skip): " >/dev/tty; read -r extra </dev/tty
-  [[ -n "$extra" ]] && body="${body}\n\n${extra}"
+  [[ -n "$extra" ]] && body="${body}
+
+${extra}"
 
   git push origin HEAD 2>/dev/null || git push --set-upstream origin HEAD
-  gh pr create --title "$title" --body "$(printf "$body")" \
+  gh pr create --title "$title" --body "$body" \
     && echo "  ✅ PR created${number:+ — will close #$number on merge}"
   [[ -n "$number" ]] && _gh_project_set_status "$number" "In Review" &!
 }
