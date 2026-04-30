@@ -33,6 +33,28 @@ _gh_repo_label() {
     || echo "Global"
 }
 
+# Ensure standard labels exist on the repo — runs once then exits fast
+_gh_ensure_labels() {
+  local existing
+  existing=$(gh label list --json name --jq '.[].name' 2>/dev/null)
+  local -A labels=(
+    [cleanup]="0075ca"
+    [bug]="d73a4a"
+    [feature]="a2eeef"
+    [security]="e4e669"
+    [backend]="0052cc"
+    [frontend]="bfd4f2"
+    [auth]="f9d0c4"
+    [priority:high]="b60205"
+    [priority:medium]="fbca04"
+    [priority:low]="0e8a16"
+  )
+  for name color in "${(@kv)labels}"; do
+    echo "$existing" | grep -qx "$name" || \
+      gh label create "$name" --color "$color" --force >/dev/null 2>&1
+  done
+}
+
 # ---------------------------------------
 # GitHub Projects v2 — board integration
 # ---------------------------------------
@@ -114,11 +136,11 @@ _gh_get_or_create_project() {
 }
 
 # Add an issue to the project board and set its status field
-# Usage: _gh_project_set_status <issue_number> <status>
+# Usage: _gh_project_set_status <issue_number> <board_status>
 # Status values: "Todo" | "In Progress" | "In Review" | "Done"
 _gh_project_set_status() {
   local issue_number="$1"
-  local status="$2"
+  local board_status="$2"
 
   local project_id
   project_id=$(_gh_get_or_create_project 2>/dev/tty) || return 0  # silent fail — don't block workflow
@@ -168,11 +190,11 @@ for f in data['data']['node']['fields']['nodes']:
   option_id=$(echo "$fields_json" | python3 -c "
 import json,sys
 data=json.load(sys.stdin)
-status='$status'
+board_status='$board_status'
 for f in data['data']['node']['fields']['nodes']:
     if f.get('name') == 'Status':
         for o in f.get('options',[]):
-            if o['name'] == status:
+            if o['name'] == board_status:
                 print(o['id']); break
 " 2>/dev/null)
 
@@ -655,6 +677,7 @@ _github_create_issue() {
 
   echo -n "  Body (blank to skip): " >/dev/tty; read -r body </dev/tty
 
+  _gh_ensure_labels
   local label
   label=$(gh label list --json name,color \
     --jq '.[] | "\(.name)"' 2>/dev/null \
