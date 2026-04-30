@@ -685,12 +685,11 @@ _github_create_issue() {
         --header='Select label (esc to skip)')
 
   local assignee
-  local _self_login
-  _self_login=$(gh api user --jq '.login' 2>/dev/null)
-  local _collabs
-  _collabs=$(gh api "repos/$(gh repo view --json nameWithOwner --jq '.nameWithOwner')/collaborators" --jq '.[].login' 2>/dev/null)
-  assignee=$(printf '%s\n' "$_self_login" ${(f)_collabs} \
-    | sort -u \
+  local _repo _collabs _collab_list
+  _repo=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null)
+  _collabs=$(gh api "repos/${_repo}/collaborators" --jq '.[].login' 2>/dev/null)
+  _collab_list=$(printf '%s\n' "@me" ${(f)_collabs} | grep -v '^$' | sort -u)
+  assignee=$(printf '%s\n' "${(f)_collab_list}" \
     | fzf "${FZF_THEME[@]}" \
         --border=rounded \
         --border-label='  ◈  ASSIGNEE  ' \
