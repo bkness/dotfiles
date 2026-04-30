@@ -674,16 +674,17 @@ _github_create_issue() {
   echo -n "  Body (blank to skip): " >/dev/tty; read -r body </dev/tty
 
   _gh_ensure_labels
-  local label _label_list
+  local _label_list _selected_labels
   _label_list=$(gh label list --json name --jq '.[].name' 2>/dev/null)
   if [[ -n "$_label_list" ]]; then
-    label=$(printf '%s\n' "${(f)_label_list}" \
+    _selected_labels=$(printf '%s\n' "${(f)_label_list}" \
       | fzf "${FZF_THEME[@]}" \
+          --multi \
           --border=rounded \
-          --border-label='  ◈  LABEL  ' \
+          --border-label='  ◈  LABELS  ' \
           --prompt='  ❯ ' \
           --height=40% \
-          --header='Select label (esc to skip)')
+          --header='Tab to multi-select, Enter to confirm (esc to skip)')
   fi
 
   local assignee
@@ -700,7 +701,9 @@ _github_create_issue() {
         --header='Assign to (esc to skip)')
 
   local args=(--title "$title" --body "${body:-""}")
-  [[ -n "$label" ]] && args+=(--label "$label")
+  while IFS= read -r _lbl; do
+    [[ -n "$_lbl" ]] && args+=(--label "$_lbl")
+  done <<< "$_selected_labels"
   [[ -n "$assignee" ]] && args+=(--assignee "$assignee")
 
   local url
