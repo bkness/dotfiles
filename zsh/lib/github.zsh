@@ -34,6 +34,163 @@ _gh_repo_label() {
 }
 
 # ---------------------------------------
+# GitHub Projects v2 — board integration
+# ---------------------------------------
+
+_FORGED_PROJECTS_CACHE="${XDG_CONFIG_HOME:-$HOME/.config}/forged/projects"
+
+# Ensure the project scope is available — prompt once if not
+_gh_ensure_project_scope() {
+  gh api user --silent 2>/dev/null || return 1
+  # Try a lightweight Projects v2 query — fails if scope missing
+  gh api graphql -f query='{ viewer { projectsV2(first:1) { nodes { id } } } }' \
+    --silent >/dev/null 2>&1 && return 0
+  echo "  ⚠️  GitHub Projects scope required. Re-authenticating..." >&2
+  gh auth refresh -s project 2>/dev/null
+}
+
+# Returns project node ID for current repo, auto-creating if needed
+# Caches result in ~/.config/forged/projects as "owner/repo=PROJECT_ID"
+_gh_get_or_create_project() {
+  local repo
+  repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null) || return 1
+  local repo_name="${repo#*/}"
+
+  mkdir -p "${_FORGED_PROJECTS_CACHE%/*}"
+  touch "$_FORGED_PROJECTS_CACHE"
+
+  # Return cached ID if present
+  local cached
+  cached=$(grep "^${repo}=" "$_FORGED_PROJECTS_CACHE" 2>/dev/null | cut -d= -f2)
+  [[ -n "$cached" ]] && echo "$cached" && return 0
+
+  _gh_ensure_project_scope || return 1
+
+  local owner="${repo%/*}"
+
+  # Check if a project already exists for this repo
+  local existing_id
+  existing_id=$(gh api graphql -f query="
+    query {
+      repositoryOwner(login: \"$owner\") {
+        ... on User {
+          projectsV2(first: 20) {
+            nodes { id title }
+          }
+        }
+        ... on Organization {
+          projectsV2(first: 20) {
+            nodes { id title }
+          }
+        }
+      }
+    }" --jq ".data.repositoryOwner.projectsV2.nodes[] | select(.title == \"$repo_name\") | .id" 2>/dev/null | head -1)
+
+  if [[ -n "$existing_id" ]]; then
+    echo "${repo}=${existing_id}" >> "$_FORGED_PROJECTS_CACHE"
+    echo "$existing_id"
+    return 0
+  fi
+
+  # Auto-create project named after the repo
+  local owner_id
+  owner_id=$(gh api graphql -f query="
+    query { repositoryOwner(login: \"$owner\") { id } }" \
+    --jq '.data.repositoryOwner.id' 2>/dev/null)
+  [[ -z "$owner_id" ]] && return 1
+
+  local new_id
+  new_id=$(gh api graphql -f query="
+    mutation {
+      createProjectV2(input: { ownerId: \"$owner_id\", title: \"$repo_name\" }) {
+        projectV2 { id }
+      }
+    }" --jq '.data.createProjectV2.projectV2.id' 2>/dev/null)
+  [[ -z "$new_id" ]] && return 1
+
+  echo "${repo}=${new_id}" >> "$_FORGED_PROJECTS_CACHE"
+  echo "  ✅ Created project board \"$repo_name\"" >&2
+  echo "$new_id"
+}
+
+# Add an issue to the project board and set its status field
+# Usage: _gh_project_set_status <issue_number> <status>
+# Status values: "Todo" | "In Progress" | "In Review" | "Done"
+_gh_project_set_status() {
+  local issue_number="$1"
+  local status="$2"
+
+  local project_id
+  project_id=$(_gh_get_or_create_project 2>/dev/tty) || return 0  # silent fail — don't block workflow
+
+  local repo
+  repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null) || return 0
+
+  # Get issue node ID
+  local issue_node_id
+  issue_node_id=$(gh api "repos/${repo}/issues/${issue_number}" --jq '.node_id' 2>/dev/null) || return 0
+
+  # Add item to project (idempotent)
+  local item_id
+  item_id=$(gh api graphql -f query="
+    mutation {
+      addProjectV2ItemById(input: { projectId: \"$project_id\", contentId: \"$issue_node_id\" }) {
+        item { id }
+      }
+    }" --jq '.data.addProjectV2ItemById.item.id' 2>/dev/null) || return 0
+
+  # Find the Status field ID
+  local field_id option_id
+  local fields_json
+  fields_json=$(gh api graphql -f query="
+    query {
+      node(id: \"$project_id\") {
+        ... on ProjectV2 {
+          fields(first: 20) {
+            nodes {
+              ... on ProjectV2SingleSelectField {
+                id name options { id name }
+              }
+            }
+          }
+        }
+      }
+    }" 2>/dev/null)
+
+  field_id=$(echo "$fields_json" | python3 -c "
+import json,sys
+data=json.load(sys.stdin)
+for f in data['data']['node']['fields']['nodes']:
+    if f.get('name') == 'Status':
+        print(f['id']); break
+" 2>/dev/null)
+
+  option_id=$(echo "$fields_json" | python3 -c "
+import json,sys
+data=json.load(sys.stdin)
+status='$status'
+for f in data['data']['node']['fields']['nodes']:
+    if f.get('name') == 'Status':
+        for o in f.get('options',[]):
+            if o['name'] == status:
+                print(o['id']); break
+" 2>/dev/null)
+
+  [[ -z "$field_id" || -z "$option_id" ]] && return 0
+
+  # Set the status
+  gh api graphql -f query="
+    mutation {
+      updateProjectV2ItemFieldValue(input: {
+        projectId: \"$project_id\"
+        itemId: \"$item_id\"
+        fieldId: \"$field_id\"
+        value: { singleSelectOptionId: \"$option_id\" }
+      }) { projectV2Item { id } }
+    }" --silent >/dev/null 2>&1
+}
+
+# ---------------------------------------
 # Main menu
 # ---------------------------------------
 
@@ -240,6 +397,7 @@ github_ui_issues() {
       slug=$(echo "$issue_title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-40)
       local branch="${branch_type}/${number}-${slug}"
       git switch -c "$branch" && echo "  ✅ Switched to $branch"
+      _gh_project_set_status "$number" "In Progress" &!
       ;;
     "🔀  Open PR")         github_ui_open_pr ;;
     "🏷   Label")
@@ -515,6 +673,7 @@ _github_create_issue() {
   local number
   number=$(echo "$url" | grep -oE '[0-9]+$')
   echo "  ✅ Issue #$number created"
+  _gh_project_set_status "$number" "Todo" &!
 
   # Offer to create a branch tied to the issue
   local branch_type
@@ -531,6 +690,7 @@ _github_create_issue() {
   slug=$(echo "$title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-40)
   local branch="${branch_type}/${number}-${slug}"
   git switch -c "$branch" && echo "  ✅ Switched to $branch"
+  _gh_project_set_status "$number" "In Progress" &!
 }
 
 # ── open PR with auto Closes #NNN from branch name ───────────
@@ -551,6 +711,7 @@ github_ui_open_pr() {
 
   gh pr create --title "$title" --body "$(printf "$body")" \
     && echo "  ✅ PR created${number:+ — will close #$number on merge}"
+  [[ -n "$number" ]] && _gh_project_set_status "$number" "In Review" &!
 }
 
 # ── keybind — Ctrl+G ─────────────────────────────────────────
