@@ -360,7 +360,7 @@ github_ui_prs() {
     "🌿  Checkout")        gh pr checkout "$number" ;;
     "🔗  Open in browser") gh pr view "$number" --web ;;
     "👁   View")           gh pr view "$number" ;;
-    "✅  Merge")           gh pr merge "$number" ;;
+    "✅  Merge")           gh pr merge "$number" "--squash";;
     "❌  Close")           gh pr close "$number" ;;
   esac
 }
@@ -683,7 +683,40 @@ _github_create_issue() {
   echo -n "  Title: " >/dev/tty; read -r title </dev/tty
   [[ -z "$title" ]] && return
 
-  echo -n "  Body (blank to skip): " >/dev/tty; read -r body </dev/tty
+  # Repo needed early for templates + assignees
+  local _repo
+  _repo=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null)
+
+  # Template picker — fetches ISSUE_TEMPLATE/ from the repo
+  local template_body="" frontmatter_label=""
+  local _templates
+  _templates=$(gh api "repos/${_repo}/contents/ISSUE_TEMPLATE" --jq '.[].name' 2>/dev/null)
+  if [[ -n "$_templates" ]]; then
+    local _tpl
+    _tpl=$(printf '%s\n' ${(f)_templates} "No template" \
+      | fzf "${FZF_THEME[@]}" \
+          --border=rounded \
+          --border-label='  ◈  TEMPLATE  ' \
+          --prompt='  ❯ ' \
+          --height=30% \
+          --header='Pick a template (esc to skip)')
+    if [[ -n "$_tpl" && "$_tpl" != "No template" ]]; then
+      local _raw
+      _raw=$(gh api "repos/${_repo}/contents/ISSUE_TEMPLATE/${_tpl}" --jq '.content' | base64 -d)
+      # Strip YAML frontmatter (everything between the two --- markers)
+      template_body=$(echo "$_raw" | awk 'BEGIN{f=0} /^---/{f++; next} f<2{next} {print}')
+      # Pull the label out of frontmatter so we can pre-query the label picker
+      frontmatter_label=$(echo "$_raw" | awk '/^---/{f++; next} f==1 && /^labels:/{sub(/^labels:[[:space:]]*/, ""); print; exit}')
+    fi
+  fi
+
+  local body
+  if [[ -n "$template_body" ]]; then
+    echo -n "  Additional notes (blank to skip): " >/dev/tty; read -r body </dev/tty
+    body="${template_body}${body:+$'\n\n'${body}}"
+  else
+    echo -n "  Body (blank to skip): " >/dev/tty; read -r body </dev/tty
+  fi
 
   _gh_ensure_labels
   local _label_list _selected_labels
@@ -696,12 +729,12 @@ _github_create_issue() {
           --border-label='  ◈  LABELS  ' \
           --prompt='  ❯ ' \
           --height=40% \
-          --header='Tab to multi-select, Enter to confirm (esc to skip)')
+          --header='Tab to multi-select, Enter to confirm (esc to skip)' \
+          ${frontmatter_label:+--query "$frontmatter_label"})
   fi
 
   local assignee
-  local _repo _collabs _collab_list
-  _repo=$(gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null)
+  local _collabs _collab_list
   _collabs=$(gh api "repos/${_repo}/collaborators" --jq '.[].login' 2>/dev/null)
   _collab_list=$(printf '%s\n' "@me" ${(f)_collabs} | grep -v '^$' | sort -u)
   assignee=$(printf '%s\n' "${(f)_collab_list}" \
