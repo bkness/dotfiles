@@ -50,5 +50,5 @@ zinit light-mode for \
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 export PATH="$HOME/.local/bin:$PATH"
 
-# Track shell count — auto online/offline
-_shell_open
+# Track shell count — auto online/offline (guard prevents sz/source from double-incrementing)
+[[ -z "$_SHELL_REGISTERED" ]] && { _SHELL_REGISTERED=1; _shell_open; }
