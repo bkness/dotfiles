@@ -244,6 +244,7 @@ github_ui() {
       "  🔗  Open in Browser"
       "  🔀  Pull Requests"
       "  🐛  Issues"
+      "  🫸  Push Commit"
       "  📬  Open PR"
       "  💬  Messages"
       "  📊  Repo Status"
@@ -271,6 +272,7 @@ github_ui() {
     "📦  Stage & Commit")  github_ui_staging ;;
     "📋  Log")             github_ui_log ;;
     "🔗  Open in Browser") gh repo view --web ;;
+    "🫸  Push Commit")     github_ui_push_commit ;;
     "🔀  Pull Requests")   github_ui_prs ;;
     "🐛  Issues")          github_ui_issues ;;
     "📬  Open PR")         github_ui_open_pr ;;
@@ -447,6 +449,12 @@ github_ui_issues() {
       [[ -n "$body" ]] && gh issue comment "$number" --body "$body"
       ;;
   esac
+}
+
+github_ui_push_commit() {
+  local branch
+  branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || return
+  git push origin "branch" && echo "✅ Pushed $branch to origin" || echo "❌ Failed to push $branch"
 }
 
 github_ui_issues_create() { _github_create_issue }

@@ -50,9 +50,31 @@ _shell_open() {
   fi
   [[ "$(jq -r '.musicOnStart' ~/.forged-settings.json 2>/dev/null)" == "true" ]] && { 
     pgrep -qx "Music" || open -a Music &!
-    sleep 2
+    sleep 5 # wait for Music to launch before trying to get track info
     osascript -e 'open location "musics://music.apple.com/us/station/bad-omens-similar-artists-station/ra.467610583"' &!
+    osascript -e 'display notification "Apple Music: Personal station started 🎶" with title "Shell Startup"'
 }
+}
+
+_shell_current() {
+  # Get current track and artist from Apple Music
+  local state
+  state=$(osascript -e 'tell application "Music" to get player state' 2>/dev/null)
+    
+    if [[ "$state" != "playing" ]]; then
+      osascript -e 'display notification "Music is paused ⏸️" with title "Apple Music Status"'
+      return
+    fi
+
+    local track artist
+    track=$(osascript -e 'tell application "Music" to get name of current track' 2>/dev/null)
+    artist=$(osascript -e 'tell application "Music" to get artist of current track' 2>/dev/null)
+
+      if [[ -n "$track" && -n "$artist" ]]; then
+        osascript -e "display notification \"$track by $artist\" with title 'Now Playing 🎵'"
+       else 
+         osascript -e 'display notification "Station is playing 🎶" with title "Apple Music Status"'
+       fi
 }
 
 _shell_close() {
@@ -75,16 +97,18 @@ scan() {
 bye() { exit }
 
 # Shell
-alias mplay='osascript -e "tell application \"Music\" to playpause"' # desc: Toggle play/pause in Music app 
-alias mnext='osascript -e "tell application \"Music\" to next track"' # desc: Skip to next track in Music app
-alias mprev='osascript -e "tell application \"Music\" to previous track"' # desc: Skip to previous track in Music app
-alias omens='osascript -e "open location \"musics://music.apple.com/us/station/bad-omens-similar-artists-station/ra.467610583\""' # desc: Bad Omens station
-alias prevail='osascript -e "open location \"musics://music.apple.com/us/station/i-prevail-similar-artists-station/ra.948448824"' # desc: I Prevail station
-alias horizon='osascript -e "open location \"musics://music.apple.com/us/station/bring-me-the-horizon-similar-artists-station/ra.121043936"' # desc: Bring me the Horizon station
-alias mymusic='osascript -e "open location \"musics://music.apple.com/us/station/brandons-station/ra.u-40787829f08b63e81abb70ff757aa95f"' #desc: My Music station
+alias music="open -a Music" # desc: Open Music app
+alias mplay='osascript -e "tell application \"Music\" to playpause"; _shell_current' # desc: Toggle play/pause in Music app 
+alias mnext='osascript -e "tell application \"Music\" to next track"; _shell_current' # desc: Skip to next track in Music app
+alias mprev='osascript -e "tell application \"Music\" to previous track"; _shell_current' # desc: Skip to previous track in Music app
+alias omens='osascript -e "open location \"musics://music.apple.com/us/station/bad-omens-similar-artists-station/ra.467610583\""; _shell_current' # desc: Bad Omens station
+alias prevail='osascript -e "open location \"musics://music.apple.com/us/station/i-prevail-similar-artists-station/ra.948448824\""; _shell_current' # desc: I Prevail station
+alias horizon='osascript -e "open location \"musics://music.apple.com/us/station/bring-me-the-horizon-similar-artists-station/ra.121043936\""; _shell_current' # desc: Bring me the Horizon station
+alias mymusic='osascript -e "open location \"musics://music.apple.com/us/station/brandons-station/ra.u-40787829f08b63e81abb70ff757aa95f\""; _shell_current' #desc: My Music station
 alias wat='open "https://www.weballtech.com"' # desc: Open WebAllTech website
 alias apistat='open "https://www.weballtech.com/api/"' # desc: Open WebAllTech API status page
-alias music="open -a Music" # desc: Open Music app
+alias vsfont='open -a "Visual Studio Code" ~/Library/Application\ Support/Code/User/settings.json' # desc: Open VS Code settings for font editing
+alias editstarship='open ~/.config/starship.toml' # desc: Edit Starship prompt configuration
 alias c="clear" # desc: Clear terminal
 alias ..="cd .." # desc: Up one directory
 alias ll="eza -la --icons" # desc: List all files (detailed, icons)
