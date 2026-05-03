@@ -84,7 +84,7 @@ project_ui() {
       refresh-dev-cache
       ;;
     "🧪  Detect Project Type") project_ui_detect ;;
-    "🛠   Settings")           echo "⚙️  Coming soon" ;;
+    "🛠   Settings")           project_settings ;;
   esac
 }
 
@@ -188,6 +188,22 @@ quick_edit_readme() {
   local readme="${PWD}/README.md"
   [[ ! -f "$readme" ]] && echo "# $(basename "$PWD")" > "$readme"
   ${EDITOR:-vim} "$readme"
+}
+
+project_settings() {
+  local settings="$HOME/.forged-settings.json"
+  local selection
+  selection=$(jq -r 'to_entries[] | "\(.key); \(.value)"' "$settings" 2>/dev/null \
+    | fzf --border=rounded --prompt=' ❯ ') || return
+
+  local key=$(echo "$selection" | cut -d';' -f1 | xargs)
+  local value=$(echo "$selection" | cut -d';' -f2 | xargs)
+  local new_value
+  [[ "$value" == "true" ]] && new_value="false" || new_value="true"
+
+  jq --arg key "$key" --argjson val "$new_value" '.[$key] = $val' "$settings" > /tmp/forged-settings.tmp \
+    && mv /tmp/forged-settings.tmp "$settings"
+  echo "  $key → $new_value"
 }
 
 # ---------------------------------------

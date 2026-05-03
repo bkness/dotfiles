@@ -33,7 +33,13 @@ fire_hook() {
 # ---------------------------------------
 # Built-in zsh hook integration
 # ---------------------------------------
+_LAST_PWD=""
+
 _hook_chpwd() {
+  local prev="$_LAST_PWD"
+  _LAST_PWD="$PWD"
+
+  fire_hook "on_dir_exit"  # fire exit for previous directory
   fire_hook "on_dir_enter"
 
   local type
@@ -48,6 +54,14 @@ auto-venv() {
   fi
 }
 register_hook "on_dir_enter" "auto-venv"
+
+# Auto-close Python virtualenv when leaving directory
+_auto_deactivate_venv() {
+  if [[ -n "$VIRTUAL_ENV" && "$PWD" != "$VIRTUAL_ENV"* ]]; then
+    deactivate
+  fi  
+}
+register_hook "on_dir_exit" "_auto_deactivate_venv"
 
 # Auto-switch Node version when .nvmrc is present
 auto-nvm() {
