@@ -18,10 +18,39 @@ alias gco="git checkout" # desc: Switch branch or restore files
 # GitHub dashboard
 alias ghui="github_ui" # desc: Open GitHub dashboard
 
+# Govee globals 
+GOVEE_OFFICE="6F:1C:60:74:F4:5B:55:F0"
+GOVEE_MAIN="72:50:C6:35:33:33:59:46"
+GOVEE_OL_1="10:CE:60:74:F4:5E:18:26"
+GOVEE_OL_2="6E:3D:60:74:F4:55:DB:44"
+GOVEE_KITCHEN_1="38:BF:60:74:F4:5E:91:20"
+GOVEE_KITCHEN_2="36:5E:60:74:F4:48:8A:4A"
+GOVEE_KITCHEN_3="74:F3:60:74:F4:5B:66:7A"
+
+# Govee light boot up function
+_govee_boot() {
+  local model="${1:-H6008}"
+  shift
+  local lights=("$@")
+
+  for light in "${lights[@]}"; do
+    curl -s -X PUT "http://localhost:8000/lights/${light}/control?model=${model}" -H "Content-Type: application/json" -d '{"name": "turn", "value": "on"}' >/dev/null &!
+  done 
+} 
+
+_govee_color() {
+  local model="$1"
+  local device="$2"
+  local r="$3" g="$4" b="$5"
+  curl -s -X PUT "http://localhost:8000/lights/${device}/control?model=${model}" \
+    -H "Content-Type: application/json" \
+    -d "{\"name\": \"color\", \"value\": {\"r\": $r, \"g\": $g, \"b\": $b}}" >/dev/null &!
+}
+
 # Shared curl helper — all weballtech API calls go through here
 _weballtech_post() {
   local endpoint="$1" payload="$2"
-  curl -sL --max-time 5 -X POST "https://www.weballtech.com${endpoint}" \
+  curl -sL --max-time 5 -X POST "https://weballtech-brandon-kellys-projects.vercel.app/${endpoint}" \
     -H 'Content-Type: application/json' \
     -H "Authorization: Bearer $WEBALLTECH_TOKEN" \
     -d "$payload" > /dev/null
@@ -38,20 +67,36 @@ _push_shell_status() {
   local hooks=${#_HOOKS[@]}
   local meta="$version-$plugins-$hooks"
   [[ "$meta" == "$(cat ~/.shell_meta_cache 2>/dev/null)" ]] && return
-  echo "$meta" > ~/.shell_meta_cache
-  _weballtech_post "/api/forged-status" "{\"type\":\"shell\",\"data\":{\"version\":\"$version\",\"plugins\":$plugins,\"hooks\":$hooks}}"
+  
 }
 
 _shell_open() {
-  local count=$(( $(cat ~/.shell_count 2>/dev/null || echo 0) + 1 ))
+  local prev=$(cat ~/.shell_count 2>/dev/null || echo 0)
+  local count=$(( prev + 1 ))
   [[ $count -gt 1 ]] && count=1
   echo $count > ~/.shell_count
   echo "shell count: $count"
-  [[ $count -eq 1 ]] && { online &!; _push_shell_status &!; }
+  if [[ $prev -eq 0 ]]; then
+    online &!
+    _push_shell_status &!
+    local version=$(forged version 2>/dev/null | sed 's/forged-cli v//' || echo "unknown")
+    local msg="● online | v$version | lights on | music up"
+    [[ $(osascript -e 'tell application "Music" to get player state' 2>/dev/null) != "playing" ]] && \
+      osascript -e 'open location "musics://music.apple.com/us/station/brandons-station/ra.u-40787829f08b63e81abb70ff757aa95f"' &!
+    _govee_boot "H6008" "$GOVEE_OFFICE" &!
+    _govee_boot "H610A" "$GOVEE_MAIN" &!
+    osascript -e "display notification \"$msg\" with title \"Shell opened\"" &!
+  fi
 }
 
 _shell_current() {
   local state
+  local hour=$(date +%H%M)
+    if [[ $hour -ge 1800 || $hour -lt 600 ]]; then
+      _govee_color "H610A" "$GOVEE_MAIN" 255 0 128 &!
+    else
+      _govee_color "H6008" "$GOVEE_OFFICE" 0 100 255 &!
+    fi
   state=$(osascript -e 'tell application "Music" to get player state' 2>/dev/null)
 
   if [[ "$state" != "playing" ]]; then
@@ -120,3 +165,14 @@ alias sz="source ~/.zshrc" # desc: Reload zsh config
 alias mkdir="mkdir -p"  # desc: Create directories (with parents)
 alias grep="grep --color=auto" # desc: Colored grep output
 
+# Govee light controls
+alias mon='curl -s -X PUT "http://localhost:8000/lights/6F:1C:60:74:F4:5B:55:F0/control?model=H6008" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "on"}'\'' && curl -s -X PUT "http://localhost:8000/lights/72:50:C6:35:33:33:59:46/control?model=H610A" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "on"}'\'' # desc: Turn on main lights'
+alias moff='curl -s -X PUT "http://localhost:8000/lights/6F:1C:60:74:F4:5B:55:F0/control?model=H6008" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "off"}'\'' && curl -s -X PUT "http://localhost:8000/lights/72:50:C6:35:33:33:59:46/control?model=H610A" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "off"}'\'' # desc: Turn off main lights'
+alias olon='curl -s -X PUT "http://localhost:8000/lights/10:CE:60:74:F4:5E:18:26/control?model=H6008" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "on"}'\'' && curl -s -X PUT "http://localhost:8000/lights/6E:3D:60:74:F4:55:DB:44/control?model=H6008" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "on"}'\'' # desc: Turn on outer living room lights'
+alias oloff='curl -s -X PUT "http://localhost:8000/lights/10:CE:60:74:F4:5E:18:26/control?model=H6008" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "off"}'\'' && curl -s -X PUT "http://localhost:8000/lights/6E:3D:60:74:F4:55:DB:44/control?model=H6008" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "off"}'\'' # desc: Turn off outer living room lights'
+alias kon='curl -s -X PUT "http://localhost:8000/lights/38:BF:60:74:F4:5E:91:20/control?model=H6008" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "on"}'\'' && curl -s -X PUT "http://localhost:8000/lights/36:5E:60:74:F4:48:8A:4A/control?model=H6008" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "on"}'\'' && curl -s -X PUT "http://localhost:8000/lights/74:F3:60:74:F4:5B:66:7A/control?model=H6008" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "on"}'\'' # desc: Turn on kitchen lights'
+alias koff='curl -s -X PUT "http://localhost:8000/lights/38:BF:60:74:F4:5E:91:20/control?model=H6008" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "off"}'\'' && curl -s -X PUT "http://localhost:8000/lights/36:5E:60:74:F4:48:8A:4A/control?model=H6008" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "off"}'\'' && curl -s -X PUT "http://localhost:8000/lights/74:F3:60:74:F4:5B:66:7A/control?model=H6008" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "off"}'\'' # desc: Turn off kitchen lights'
+alias lpink='curl -X PUT "http://localhost:8000/lights/72:50:C6:35:33:33:59:46/control?model=H610A" -H "Content-Type: application/json" -d '\''{"name": "color", "value": {"r": 255, "g": 0, "b": 128}}'\'' # desc: Set light to pink'
+alias lblue='curl -s -X PUT "http://localhost:8000/lights/6F:1C:60:74:F4:5B:55:F0/control?model=H6008" -H "Content-Type: application/json" -d '"'"'{"name": "color", "value": {"r": 0, "g": 100, "b": 255}}'"'"' && curl -s -X PUT "http://localhost:8000/lights/72:50:C6:35:33:33:59:46/control?model=H610A" -H "Content-Type: application/json" -d '"'"'{"name": "color", "value": {"r": 0, "g": 100, "b": 255}}'"'"''
+alias lpurple='curl -s -X PUT "http://localhost:8000/lights/6F:1C:60:74:F4:5B:55:F0/control?model=H6008" -H "Content-Type: application/json" -d '"'"'{"name": "color", "value": {"r": 148, "g": 0, "b": 211}}'"'"' && curl -s -X PUT "http://localhost:8000/lights/72:50:C6:35:33:33:59:46/control?model=H610A" -H "Content-Type: application/json" -d '"'"'{"name": "color", "value": {"r": 148, "g": 0, "b": 211}}'"'"''
+alias opink='curl -X PUT "http://localhost:8000/lights/6F:1C:60:74:F4:5B:55:F0/control?model=H6008" -H "Content-Type: application/json" -d '\''{"name": "color", "value": {"r": 255, "g": 0, "b": 128}}'\'' # desc: Set light to pink'
