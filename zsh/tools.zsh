@@ -55,14 +55,6 @@ fzf-history-widget() {
 zle -N fzf-history-widget
 bindkey '^R' fzf-history-widget
 
-
-# ---------------------------------------
-# Back button out of fzf menus
-# ---------------------------------------
-add-back-option() {
-  printf "%s\n" "$@" "Back"
-}
-
 # ---------------------------------------
 # Fuzzy directory jump
 # ---------------------------------------
