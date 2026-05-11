@@ -362,7 +362,7 @@ github_ui_prs() {
     "🌿  Checkout")        gh pr checkout "$number" ;;
     "🔗  Open in browser") gh pr view "$number" --web ;;
     "👁   View")           gh pr view "$number" ;;
-    "✅  Merge")           gh pr merge "$number" "--squash";;
+    "✅  Merge")           gh pr merge "$number" --squash ;;
     "❌  Close")           gh pr close "$number" ;;
   esac
 }
@@ -454,7 +454,7 @@ github_ui_issues() {
 github_ui_push_commit() {
   local branch
   branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || return
-  git push origin "branch" && echo "✅ Pushed $branch to origin" || echo "❌ Failed to push $branch"
+  git push origin "$branch" && echo "✅ Pushed $branch to origin" || echo "❌ Failed to push $branch"
 }
 
 github_ui_issues_create() { _github_create_issue }

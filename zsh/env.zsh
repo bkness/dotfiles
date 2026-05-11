@@ -5,6 +5,8 @@
 export EDITOR="code"
 export VISUAL="code"
 
+export PATH="$HOME/.local/bin:$PATH"
+
 # Dev root
 export DEV_ROOT="$HOME/dev/projects"
 
@@ -26,7 +28,7 @@ _lazy_nvm() {
   [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
 }
 
-nvm()    { typeset -f _lazy_nvm >/dev/null 2>&1 && _lazy_nvm; command nvm "$@" }
+nvm()    { unfunction nvm 2>/dev/null; typeset -f _lazy_nvm >/dev/null 2>&1 && _lazy_nvm; nvm "$@" }
 node()   { typeset -f _lazy_nvm >/dev/null 2>&1 && _lazy_nvm; command node "$@" }
 npm()    { typeset -f _lazy_nvm >/dev/null 2>&1 && _lazy_nvm; command npm "$@" }
 npx()    { typeset -f _lazy_nvm >/dev/null 2>&1 && _lazy_nvm; command npx "$@" }
