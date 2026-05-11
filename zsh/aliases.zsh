@@ -144,17 +144,20 @@ _govee_flash() {
 }
 
 _govee_preexec() {
-  _GOVEE_CMD_WAS_CUSTOM=0
-  [[ "$1" == git\ push* || "$1" == gp* ]] && _GOVEE_CMD_WAS_CUSTOM=1
+  _GOVEE_CMD_WAS_PUSH=0
+  [[ "$1" == git\ push* || "$1" == gp* ]] && _GOVEE_CMD_WAS_PUSH=1
 }
 
 _govee_precmd() {
   local exit_code=$?
-  [[ $_GOVEE_CMD_WAS_CUSTOM -eq 1 ]] || return
-  _GOVEE_CMD_WAS_CUSTOM=0
-  if [[ $exit_code -eq 0 ]]; then
-    _govee_flash '{"name":"color","value":{"r":0,"g":255,"b":0}}'
-  else
+  if [[ $_GOVEE_CMD_WAS_PUSH -eq 1 ]]; then
+    _GOVEE_CMD_WAS_PUSH=0
+    if [[ $exit_code -eq 0 ]]; then
+      _govee_flash '{"name":"color","value":{"r":0,"g":255,"b":0}}'
+    else
+      _govee_flash '{"name":"color","value":{"r":255,"g":0,"b":0}}'
+    fi
+  elif [[ $exit_code -ne 0 ]]; then
     _govee_flash '{"name":"color","value":{"r":255,"g":0,"b":0}}'
   fi
 }
