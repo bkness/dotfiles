@@ -34,7 +34,7 @@ GOVEE_DREAMVIEW="3B:03:CF:36:39:34:24:3C"
 _govee_boot() {
   local model="${1:-H6008}"
   shift
-  local lights=("$@") 
+  local lights=("$@")
 
   for light in "${lights[@]}"; do
     curl -s -X PUT "http://localhost:8000/lights/${light}/control?model=${model}" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '{"name": "turn", "value": "on"}' >/dev/null &!
@@ -68,9 +68,6 @@ _govee_apply() {
   esac
 }
 
-github_full_workflow() {
-  
-}
 
 govee() {
   while true; do
@@ -96,21 +93,20 @@ govee() {
                       _govee_apply "$GOVEE_KITCHEN_3" "H6008" "$action" ;;
         hallway)       _govee_apply "$GOVEE_HALLWAY"   "H6008" "$action" ;;
         dreamview)     _govee_apply "$GOVEE_DREAMVIEW" "H6199" "$action" ;;
-        all)           _govee_apply "$GOVEE_OFFICE"    "H6008" "$action"
-                      _govee_apply "$GOVEE_MAIN"      "H610A" "$action"
-                      _govee_apply "$GOVEE_OL_1"      "H6008" "$action"
-                      _govee_apply "$GOVEE_OL_2"      "H6008" "$action"
-                      _govee_apply "$GOVEE_KITCHEN_1" "H6008" "$action"
-                      _govee_apply "$GOVEE_KITCHEN_2" "H6008" "$action"
-                      _govee_apply "$GOVEE_KITCHEN_3" "H6008" "$action"
-                      _govee_apply "$GOVEE_HALLWAY"   "H6008" "$action"
-                      _govee_apply "$GOVEE_DREAMVIEW" "H6199" "$action" ;;
+        all)           for pair in \
+                         "$GOVEE_OFFICE:H6008" "$GOVEE_MAIN:H610A" \
+                         "$GOVEE_OL_1:H6008"   "$GOVEE_OL_2:H6008" \
+                         "$GOVEE_KITCHEN_1:H6008" "$GOVEE_KITCHEN_2:H6008" "$GOVEE_KITCHEN_3:H6008" \
+                         "$GOVEE_HALLWAY:H6008" "$GOVEE_DREAMVIEW:H6199"; do
+                         _govee_apply "${pair%%:*}" "${pair##*:}" "$action"
+                         sleep 0.3
+                       done ;;
       esac
 
       echo "💡 $room → $action"
     done
-  }
-zle -N govee # desc: create zle widget for govee menu 
+}
+zle -N govee # desc: create zle widget for govee menu
 bindkey '^V' govee # desc: Ctrl+V to open Govee light control menu
 
 _GOVEE_LAST_FLASH_GREEN=0
@@ -170,7 +166,6 @@ _govee_precmd() {
 
 add-zsh-hook preexec _govee_preexec
 add-zsh-hook precmd _govee_precmd
-
 # Shared curl helper — all weballtech API calls go through here
 _weballtech_post() {
   local endpoint="$1" payload="$2"
@@ -298,5 +293,3 @@ alias cl="claude --resume" # desc: Resume last Claude Code session
 # All quick aliases (mon, moff, kon, lpink, etc.) are covered by the menu
 
 alias goveestat='curl -s http://localhost:8000/lights -H "x-api-key: $GOVEE_SERVER_KEY" | python3 -m json.tool'
-
-alias workmode='open -a "Visual Studio Code" open -a "Google Chrome" sleep 2 osascript -e "tell application \"System Events\" set position of window 1 of process \"Code\" to {0, 0} "tell application set position of window 1 of process \"Google Chrome\" to {3440, 0} &! set position of window 1 of process \"Terminal\" to {5360, 0} end tell" _shell_current'
