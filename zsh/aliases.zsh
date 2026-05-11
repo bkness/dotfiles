@@ -113,19 +113,25 @@ govee() {
 zle -N govee # desc: create zle widget for govee menu 
 bindkey '^V' govee # desc: Ctrl+V to open Govee light control menu
 
-# Flash main + living room lights green for 2s on any alias/function success.
-# 60s cooldown — a full flash (green + restore) = 8 cloud API calls.
-_GOVEE_LAST_FLASH=0
-_GOVEE_CMD_WAS_CUSTOM=0
+_GOVEE_LAST_FLASH_GREEN=0
+_GOVEE_LAST_FLASH_RED=0
+_GOVEE_CMD_WAS_PUSH=0
 
 _govee_flash() {
   local color="$1"
   local now; now=$(date +%s)
-  (( now - _GOVEE_LAST_FLASH < 60 )) && return
-  _GOVEE_LAST_FLASH=$now
+  local is_red=0
+  [[ "$color" == *'"r":255,"g":0'* ]] && is_red=1
+  if [[ $is_red -eq 1 ]]; then
+    (( now - _GOVEE_LAST_FLASH_RED < 60 )) && return
+    _GOVEE_LAST_FLASH_RED=$now
+  else
+    (( now - _GOVEE_LAST_FLASH_GREEN < 60 )) && return
+    _GOVEE_LAST_FLASH_GREEN=$now
+  fi
   {
-    local -a devices=("$GOVEE_OFFICE" "$GOVEE_MAIN" "$GOVEE_OL_1" "$GOVEE_OL_2")
-    local -a models=("H6008"          "H610A"       "H6008"       "H6008")
+    local -a devices=("$GOVEE_OFFICE" "$GOVEE_MAIN")
+    local -a models=("H6008"          "H610A")
     local restore='{"name":"color","value":{"r":75,"g":0,"b":130}}'
     local i
     for (( i=1; i<=${#devices}; i++ )); do

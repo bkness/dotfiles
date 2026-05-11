@@ -96,12 +96,22 @@ TRAPHUP()  { [[ $SHLVL -eq 1 ]] && typeset -f fire_hook > /dev/null && fire_hook
 # ---------------------------------------
 # Git lifecycle nags
 # ---------------------------------------
-_git_nag() {
-  case "$1" in
-    git\ commit*)
-      echo "\n  \e[33m⚠  Don't forget to push, you absolute menace.\e[0m\n" ;;
-    git\ push*)
-      echo "\n  \e[33m⚠  Pushed. Now close that branch before it haunts you forever.\e[0m\n" ;;
-  esac
+_GIT_NAG_PUSH=0
+
+_git_nag_pre() {
+  [[ "$1" == git\ commit* ]] && echo "\n  \e[33m⚠  Don't forget to push, you absolute menace.\e[0m\n"
+  [[ "$1" == git\ push* || "$1" == gp* ]] && _GIT_NAG_PUSH=1 || _GIT_NAG_PUSH=0
 }
-add-zsh-hook preexec _git_nag
+
+_git_nag_post() {
+  [[ $_GIT_NAG_PUSH -eq 1 ]] || return
+  _GIT_NAG_PUSH=0
+  if [[ $? -eq 0 ]]; then
+    echo "\n  \e[33m⚠  Pushed. Now close that branch before it haunts you forever.\e[0m\n"
+  else
+    echo "\n  \e[31m✗  Push failed. Fix it before you forget what you were doing.\e[0m\n"
+  fi
+}
+
+add-zsh-hook preexec _git_nag_pre
+add-zsh-hook precmd _git_nag_post
