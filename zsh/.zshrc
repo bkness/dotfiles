@@ -10,11 +10,15 @@ source ~/dev/dotfiles/zsh/plugins.zsh
 fpath=("$HOME/.zfunc" "${fpath[@]}")
 
 autoload -Uz compinit
+zstyle ':completion:*' menu yes select
 if [[ -n ~/.zcompdump(#qN.mh+24) ]]; then
   compinit
 else
   compinit -C
 fi
+
+# Initialize zoxide eagerly (no lazy-load, ensures j/zoxide is always ready)
+command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init zsh)"
 
 # Plugin registry — must load before hooks and project plugins
 source ~/dev/dotfiles/zsh/lib/plugin-registry.zsh

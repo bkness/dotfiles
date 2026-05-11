@@ -186,7 +186,7 @@ p() {
   command -v fd >/dev/null || return 1
     
   cd "$(
-    fd -t d -d 3 . "$DEV_ROOT" \
+    fd -t d -d 1 . "$DEV_ROOT" \
     | fzf --height 40% --reverse --border \
           --prompt="Projects > " \
           --preview 'printf "Selected: %s\n\n" {} && eza -la --icons -1 {}' \

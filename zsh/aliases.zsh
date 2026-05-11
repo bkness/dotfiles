@@ -12,6 +12,7 @@ alias gss="git switch" # desc: Switch branches
 alias gst="git stash" # desc: Save changes to a new stash using 'git stash'
 alias gstp="git stash pop" # desc: Apply the most recent stash and remove it from the stash list using 'git stash pop'
 alias gb="git branch" # desc: List, create, or delete branches using 'git branch'
+alias gbclean='git config --global alias.cleanup '"'"'!f() { branch=$(git rev-parse --abbrev-ref HEAD) || exit 1; case "$branch" in main|master) echo "Refusing to delete $branch. Checkout a feature branch first."; exit 1 ;; esac; if git show-ref --verify --quiet refs/heads/main; then base=main; elif git show-ref --verify --quiet refs/heads/master; then base=master; else echo "Could not find local main or master branch."; exit 1; fi; git checkout "$base" && git pull origin "$base" && git branch -d "$branch" && git push origin --delete "$branch"; }; f'"'"' # desc: Clean up current branch and delete remote'
 alias nukebranches="git fetch --prune && git branch -r | grep -v 'HEAD\|main\|master' | sed 's/origin\///' | xargs -I{} git push origin --delete '{}'" # desc: Delete all remote branches except main and master
 alias gco="git checkout" # desc: Switch branch or restore files
 
@@ -63,8 +64,10 @@ _govee_apply() {
     red)   _govee_color "$model" "$device" 255 0 0 ;;
     white) _govee_color "$model" "$device" 255 255 255 ;;
     green) _govee_color "$model" "$device" 0 255 0 ;;
+    purple) _govee_color "$model" "$device" 75 0 130 ;;
   esac
 }
+
 
 govee() {
   while true; do
@@ -74,39 +77,95 @@ govee() {
       fzf --prompt="💡 room > " --height=50% --border --no-sort)
     [[ -z "$room" || "$room" == "— exit —" ]] && return
 
-    action=$(printf "on\noff\npink\nblue\nred\nwhite\ngreen\n← back" | \
+    action=$(printf "on\noff\npink\nblue\nred\nwhite\ngreen\npurple\n← back" | \
       fzf --prompt="⚡ action > " --height=50% --border --no-sort)
     [[ -z "$action" ]] && return
     [[ "$action" == "← back" ]] && continue
 
-    case "$room" in
-      office)        _govee_apply "$GOVEE_OFFICE"    "H6008" "$action" ;;
-      main)          _govee_apply "$GOVEE_OFFICE"    "H6008" "$action"
-                     _govee_apply "$GOVEE_MAIN"      "H610A" "$action" ;;
-      "living room") _govee_apply "$GOVEE_OL_1"      "H6008" "$action"
-                     _govee_apply "$GOVEE_OL_2"      "H6008" "$action" ;;
-      kitchen)       _govee_apply "$GOVEE_KITCHEN_1" "H6008" "$action"
-                     _govee_apply "$GOVEE_KITCHEN_2" "H6008" "$action"
-                     _govee_apply "$GOVEE_KITCHEN_3" "H6008" "$action" ;;
-      hallway)       _govee_apply "$GOVEE_HALLWAY"   "H6008" "$action" ;;
-      dreamview)     _govee_apply "$GOVEE_DREAMVIEW" "H6199" "$action" ;;
-      all)           for pair in \
-                       "$GOVEE_OFFICE:H6008" "$GOVEE_MAIN:H610A" \
-                       "$GOVEE_OL_1:H6008"   "$GOVEE_OL_2:H6008" \
-                       "$GOVEE_KITCHEN_1:H6008" "$GOVEE_KITCHEN_2:H6008" "$GOVEE_KITCHEN_3:H6008" \
-                       "$GOVEE_HALLWAY:H6008" "$GOVEE_DREAMVIEW:H6199"; do
-                       _govee_apply "${pair%%:*}" "${pair##*:}" "$action"
-                       sleep 0.3
-                     done ;;
-    
-    esac
+      case "$room" in
+        office)        _govee_apply "$GOVEE_OFFICE"    "H6008" "$action" ;;
+        main)          _govee_apply "$GOVEE_OFFICE"    "H6008" "$action"
+                      _govee_apply "$GOVEE_MAIN"      "H610A" "$action" ;;
+        "living room") _govee_apply "$GOVEE_OL_1"      "H6008" "$action"
+                      _govee_apply "$GOVEE_OL_2"      "H6008" "$action" ;;
+        kitchen)       _govee_apply "$GOVEE_KITCHEN_1" "H6008" "$action"
+                      _govee_apply "$GOVEE_KITCHEN_2" "H6008" "$action"
+                      _govee_apply "$GOVEE_KITCHEN_3" "H6008" "$action" ;;
+        hallway)       _govee_apply "$GOVEE_HALLWAY"   "H6008" "$action" ;;
+        dreamview)     _govee_apply "$GOVEE_DREAMVIEW" "H6199" "$action" ;;
+        all)           for pair in \
+                         "$GOVEE_OFFICE:H6008" "$GOVEE_MAIN:H610A" \
+                         "$GOVEE_OL_1:H6008"   "$GOVEE_OL_2:H6008" \
+                         "$GOVEE_KITCHEN_1:H6008" "$GOVEE_KITCHEN_2:H6008" "$GOVEE_KITCHEN_3:H6008" \
+                         "$GOVEE_HALLWAY:H6008" "$GOVEE_DREAMVIEW:H6199"; do
+                         _govee_apply "${pair%%:*}" "${pair##*:}" "$action"
+                         sleep 0.3
+                       done ;;
+      esac
 
-    echo "💡 $room → $action"
-  done
+      echo "💡 $room → $action"
+    done
 }
 zle -N govee # desc: create zle widget for govee menu
 bindkey '^V' govee # desc: Ctrl+V to open Govee light control menu
 
+_GOVEE_LAST_FLASH_GREEN=0
+_GOVEE_LAST_FLASH_RED=0
+_GOVEE_CMD_WAS_PUSH=0
+
+_govee_flash() {
+  local color="$1"
+  local now; now=$(date +%s)
+  local is_red=0
+  [[ "$color" == *'"r":255,"g":0'* ]] && is_red=1
+  if [[ $is_red -eq 1 ]]; then
+    (( now - _GOVEE_LAST_FLASH_RED < 60 )) && return
+    _GOVEE_LAST_FLASH_RED=$now
+  else
+    (( now - _GOVEE_LAST_FLASH_GREEN < 60 )) && return
+    _GOVEE_LAST_FLASH_GREEN=$now
+  fi
+  {
+    local -a devices=("$GOVEE_OFFICE" "$GOVEE_MAIN")
+    local -a models=("H6008"          "H610A")
+    local restore='{"name":"color","value":{"r":75,"g":0,"b":130}}'
+    local i
+    for (( i=1; i<=${#devices}; i++ )); do
+      curl -sf -X PUT "http://localhost:8000/lights/${devices[$i]}/control?model=${models[$i]}" \
+        -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" \
+        -d "$color" &>/dev/null &
+    done
+    sleep 2
+    for (( i=1; i<=${#devices}; i++ )); do
+      curl -sf -X PUT "http://localhost:8000/lights/${devices[$i]}/control?model=${models[$i]}" \
+        -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" \
+        -d "$restore" &>/dev/null &
+    done
+    wait
+  } &!
+}
+
+_govee_preexec() {
+  _GOVEE_CMD_WAS_PUSH=0
+  [[ "$1" == git\ push* || "$1" == gp* ]] && _GOVEE_CMD_WAS_PUSH=1
+}
+
+_govee_precmd() {
+  local exit_code=$?
+  if [[ $_GOVEE_CMD_WAS_PUSH -eq 1 ]]; then
+    _GOVEE_CMD_WAS_PUSH=0
+    if [[ $exit_code -eq 0 ]]; then
+      _govee_flash '{"name":"color","value":{"r":0,"g":255,"b":0}}'
+    else
+      _govee_flash '{"name":"color","value":{"r":255,"g":0,"b":0}}'
+    fi
+  elif [[ $exit_code -ne 0 ]]; then
+    _govee_flash '{"name":"color","value":{"r":255,"g":0,"b":0}}'
+  fi
+}
+
+add-zsh-hook preexec _govee_preexec
+add-zsh-hook precmd _govee_precmd
 # Shared curl helper — all weballtech API calls go through here
 _weballtech_post() {
   local endpoint="$1" payload="$2"
@@ -205,9 +264,11 @@ alias horizon='osascript -e "open location \"musics://music.apple.com/us/station
 alias mymusic='osascript -e "open location \"musics://music.apple.com/us/station/brandons-station/ra.u-40787829f08b63e81abb70ff757aa95f\""; _shell_current' #desc: My Music station
 alias wat='open "https://www.weballtech.com"' # desc: Open WebAllTech website
 alias apistat='open "https://www.weballtech.com/api/"' # desc: Open WebAllTech API status page
+alias bk='open "https://www.github.com/bkness/"' # desc: Opens my github
 alias chrome='open -a "Google Chrome"' # desc: Open Google Chrome
 alias vsfont='open -a "Visual Studio Code" ~/Library/Application\ Support/Code/User/settings.json' # desc: Open VS Code settings for font editing
 alias editstarship='open ~/.config/starship.toml' # desc: Edit Starship prompt configuration
+alias killpy="lsof -ti tcp:8000 | xargs kill -9" # desc: Kill python server 
 alias c="clear" # desc: Clear terminal
 alias ..="cd .." # desc: Up one directory
 alias ll="eza -la --icons" # desc: List all files (detailed, icons)
@@ -224,19 +285,11 @@ reload() {
 alias sz="source ~/.zshrc" # desc: Reload zsh config
 alias mkdir="mkdir -p"  # desc: Create directories (with parents)
 alias grep="grep --color=auto" # desc: Colored grep output
+alias pyserver='uvicorn main:app --reload'
+alias cl="claude --resume" # desc: Resume last Claude Code session
 
-# Govee light controls
-alias mon='curl -s -X PUT "http://localhost:8000/lights/6F:1C:60:74:F4:5B:55:F0/control?model=H6008" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "on"}'\'' && curl -s -X PUT "http://localhost:8000/lights/72:50:C6:35:33:33:59:46/control?model=H610A" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "on"}'\'' # desc: Turn on main lights'
-alias moff='curl -s -X PUT "http://localhost:8000/lights/6F:1C:60:74:F4:5B:55:F0/control?model=H6008" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "off"}'\'' && curl -s -X PUT "http://localhost:8000/lights/72:50:C6:35:33:33:59:46/control?model=H610A" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "off"}'\'' # desc: Turn off main lights'
-alias hoff='curl -s -X PUT "http://localhost:8000/lights/18:C5:60:74:F4:40:62:10/control?model=H6008" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "off"}'\'' # desc: Turn off hallway light'
-alias hon='curl -s -X PUT "http://localhost:8000/lights/18:C5:60:74:F4:40:62:10/control?model=H6008" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "on"}'\'' # desc: Turn on hallway light'
-alias don='curl -s -X PUT "http://localhost:8000/lights/3B:03:CF:36:39:34:24:3C/control?model=H6199" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "on"}'\'' # desc: Turn on hallway light'
-alias doff='curl -s -X PUT "http://localhost:8000/lights/3B:03:CF:36:39:34:24:3C/control?model=H6199" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "off"}'\'' # desc: Turn on hallway light'
-alias olon='curl -s -X PUT "http://localhost:8000/lights/10:CE:60:74:F4:5E:18:26/control?model=H6008" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "on"}'\'' && curl -s -X PUT "http://localhost:8000/lights/6E:3D:60:74:F4:55:DB:44/control?model=H6008" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "on"}'\'' # desc: Turn on outer living room lights'
-alias oloff='curl -s -X PUT "http://localhost:8000/lights/10:CE:60:74:F4:5E:18:26/control?model=H6008" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "off"}'\'' && curl -s -X PUT "http://localhost:8000/lights/6E:3D:60:74:F4:55:DB:44/control?model=H6008" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "off"}'\'' # desc: Turn off outer living room lights'
-alias kon='curl -s -X PUT "http://localhost:8000/lights/38:BF:60:74:F4:5E:91:20/control?model=H6008" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "on"}'\'' && curl -s -X PUT "http://localhost:8000/lights/36:5E:60:74:F4:48:8A:4A/control?model=H6008" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "on"}'\'' && curl -s -X PUT "http://localhost:8000/lights/74:F3:60:74:F4:5B:66:7A/control?model=H6008" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "on"}'\'' # desc: Turn on kitchen lights'
-alias koff='curl -s -X PUT "http://localhost:8000/lights/38:BF:60:74:F4:5E:91:20/control?model=H6008" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "off"}'\'' && curl -s -X PUT "http://localhost:8000/lights/36:5E:60:74:F4:48:8A:4A/control?model=H6008" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "off"}'\'' && curl -s -X PUT "http://localhost:8000/lights/74:F3:60:74:F4:5B:66:7A/control?model=H6008" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "turn", "value": "off"}'\'' # desc: Turn off kitchen lights'
-alias lpink='curl -X PUT "http://localhost:8000/lights/72:50:C6:35:33:33:59:46/control?model=H610A" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "color", "value": {"r": 255, "g": 0, "b": 128}}'\'' # desc: Set light to pink'
-alias lblue='curl -s -X PUT "http://localhost:8000/lights/6F:1C:60:74:F4:5B:55:F0/control?model=H6008" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '"'"'{"name": "color", "value": {"r": 0, "g": 100, "b": 255}}'"'"' && curl -s -X PUT "http://localhost:8000/lights/72:50:C6:35:33:33:59:46/control?model=H610A" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '"'"'{"name": "color", "value": {"r": 0, "g": 100, "b": 255}}'"'"''
-alias lpurple='curl -s -X PUT "http://localhost:8000/lights/6F:1C:60:74:F4:5B:55:F0/control?model=H6008" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '"'"'{"name": "color", "value": {"r": 148, "g": 0, "b": 211}}'"'"' && curl -s -X PUT "http://localhost:8000/lights/72:50:C6:35:33:33:59:46/control?model=H610A" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '"'"'{"name": "color", "value": {"r": 148, "g": 0, "b": 211}}'"'"''
-alias opink='curl -X PUT "http://localhost:8000/lights/6F:1C:60:74:F4:5B:55:F0/control?model=H6008" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '\''{"name": "color", "value": {"r": 255, "g": 0, "b": 128}}'\'' # desc: Set light to pink'
+# Govee light controls via interactive menu
+# Use: govee() to open fzf menu, pick room + action
+# All quick aliases (mon, moff, kon, lpink, etc.) are covered by the menu
+
+alias goveestat='curl -s http://localhost:8000/lights -H "x-api-key: $GOVEE_SERVER_KEY" | python3 -m json.tool'

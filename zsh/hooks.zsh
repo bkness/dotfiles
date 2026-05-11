@@ -66,13 +66,12 @@ register_hook "on_dir_exit" "_auto_deactivate_venv"
 # Auto-switch Node version when .nvmrc is present
 auto-nvm() {
   [[ -f .nvmrc ]] || return
-  command -v nvm >/dev/null 2>&1 || return
-  local requested
+  typeset -f _lazy_nvm >/dev/null 2>&1 && _lazy_nvm
+  local requested current
   requested=$(cat .nvmrc)
-  local current
   current=$(node --version 2>/dev/null)
   [[ "$current" == "v${requested#v}" ]] && return
-  nvm use --silent
+  nvm use --silent 2>/dev/null
 }
 register_hook "on_dir_enter" "auto-nvm"
 
@@ -93,3 +92,26 @@ add-zsh-hook chpwd _hook_chpwd
 # Guard: SHLVL=1 (outermost shell only) + fire_hook must be defined (full env loaded)
 zshexit() { [[ $SHLVL -eq 1 ]] && typeset -f fire_hook > /dev/null && fire_hook "on_exit" }
 TRAPHUP()  { [[ $SHLVL -eq 1 ]] && typeset -f fire_hook > /dev/null && fire_hook "on_exit" }
+
+# ---------------------------------------
+# Git lifecycle nags
+# ---------------------------------------
+_GIT_NAG_PUSH=0
+
+_git_nag_pre() {
+  [[ "$1" == git\ commit* ]] && echo "\n  \e[33m⚠  Don't forget to push, you absolute menace.\e[0m\n"
+  [[ "$1" == git\ push* || "$1" == gp* ]] && _GIT_NAG_PUSH=1 || _GIT_NAG_PUSH=0
+}
+
+_git_nag_post() {
+  [[ $_GIT_NAG_PUSH -eq 1 ]] || return
+  _GIT_NAG_PUSH=0
+  if [[ $? -eq 0 ]]; then
+    echo "\n  \e[33m⚠  Pushed. Now close that branch before it haunts you forever.\e[0m\n"
+  else
+    echo "\n  \e[31m✗  Push failed. Fix it before you forget what you were doing.\e[0m\n"
+  fi
+}
+
+add-zsh-hook preexec _git_nag_pre
+add-zsh-hook precmd _git_nag_post

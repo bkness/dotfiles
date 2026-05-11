@@ -65,16 +65,6 @@ fcd() {
 }
 
 # ---------------------------------------
-# Lazy-load zoxide
-# ---------------------------------------
-
-_zoxide_lazy() {
-  unfunction _zoxide_lazy
-  eval "$(zoxide init zsh)"
-}
-add-zsh-hook chpwd _zoxide_lazy
-
-# ---------------------------------------
 # Project dashboard
 # ---------------------------------------
 
