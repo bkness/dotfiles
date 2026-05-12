@@ -1,5 +1,3 @@
-# Aliases
-
 # Git — core muscle-memory shortcuts
 alias gs="git status" # desc: Check the status of the working directory 
 alias gc="git commit" # desc: Commit changes using 'git commit'
@@ -155,12 +153,12 @@ _govee_precmd() {
   if [[ $_GOVEE_CMD_WAS_PUSH -eq 1 ]]; then
     _GOVEE_CMD_WAS_PUSH=0
     if [[ $exit_code -eq 0 ]]; then
-      _govee_flash '{"name":"color","value":{"r":0,"g":255,"b":0}}'
-    else
-      _govee_flash '{"name":"color","value":{"r":255,"g":0,"b":0}}'
-    fi
+      _govee_flash '{"name":"color","value":{"r":0,"g":255,"b":0}}' >/dev/null &!
+    else 
+      _govee_flash '{"name":"color","value":{"r":255,"g":0,"b":0}}' >/dev/null &!
+    fi 
   elif [[ $exit_code -ne 0 ]]; then
-    _govee_flash '{"name":"color","value":{"r":255,"g":0,"b":0}}'
+    _govee_flash '{"name":"color","value":{"r":255,"g":0,"b":0}}' >/dev/null &!
   fi
 }
 
@@ -202,8 +200,8 @@ _shell_open() {
     local msg="● online | v$version | lights on | music up"
     [[ $(osascript -e 'tell application "Music" to get player state' 2>/dev/null) != "playing" ]] && \
       osascript -e 'open location "musics://music.apple.com/us/station/brandons-station/ra.u-40787829f08b63e81abb70ff757aa95f"' &!
-    _govee_boot "H6008" "$GOVEE_OFFICE" &!
-    _govee_boot "H610A" "$GOVEE_MAIN" &!
+    _govee_boot "H6008" "$GOVEE_OFFICE" >/dev/null &!
+    _govee_boot "H610A" "$GOVEE_MAIN" >/dev/null &!
     osascript -e "display notification \"$msg\" with title \"Shell opened\"" &!
   fi
 }
@@ -212,9 +210,9 @@ _shell_current() {
   local state
   local hour=$(date +%H%M)
     if [[ $hour -ge 1800 || $hour -lt 600 ]]; then
-      _govee_color "H610A" "$GOVEE_MAIN" 255 0 128 &!
+      _govee_color "H610A" "$GOVEE_MAIN" 255 0 128 >/dev/null &!
     else
-      _govee_color "H6008" "$GOVEE_OFFICE" 0 100 255 &!
+      _govee_color "H6008" "$GOVEE_OFFICE" 0 100 255 >/dev/null &!
     fi
   state=$(osascript -e 'tell application "Music" to get player state' 2>/dev/null)
 
@@ -268,9 +266,12 @@ alias bk='open "https://www.github.com/bkness/"' # desc: Opens my github
 alias chrome='open -a "Google Chrome"' # desc: Open Google Chrome
 alias vsfont='open -a "Visual Studio Code" ~/Library/Application\ Support/Code/User/settings.json' # desc: Open VS Code settings for font editing
 alias editstarship='open ~/.config/starship.toml' # desc: Edit Starship prompt configuration
-alias killpy="lsof -ti tcp:8000 | xargs kill -9" # desc: Kill python server 
 alias c="clear" # desc: Clear terminal
 alias ..="cd .." # desc: Up one directory
+alias l="eza --icons --group-directories-first"
+alias vima="vim ~/dev/dotfiles/zsh/aliases.zsh" 
+alias vimz="vim ~/dev/dotfiles/zsh"
+alias vimj="vim ~/dev/projects"
 alias ll="eza -la --icons" # desc: List all files (detailed, icons)
 alias ls="eza --icons" # desc: List files (icons)
 alias cat="bat" # desc: View file with syntax highlight
@@ -285,7 +286,6 @@ reload() {
 alias sz="source ~/.zshrc" # desc: Reload zsh config
 alias mkdir="mkdir -p"  # desc: Create directories (with parents)
 alias grep="grep --color=auto" # desc: Colored grep output
-alias pyserver='uvicorn main:app --reload'
 alias cl="claude --resume" # desc: Resume last Claude Code session
 
 # Govee light controls via interactive menu
@@ -293,3 +293,73 @@ alias cl="claude --resume" # desc: Resume last Claude Code session
 # All quick aliases (mon, moff, kon, lpink, etc.) are covered by the menu
 
 alias goveestat='curl -s http://localhost:8000/lights -H "x-api-key: $GOVEE_SERVER_KEY" | python3 -m json.tool'
+
+pyserv() {
+  (cd ~/dev/projects/govee-automation && source .venv/bin/activate && uvicorn main:app --reload) >/dev/null &!
+  echo "🟢 govee server starting..."
+}
+
+killpy() { 
+  pgrep -f "govee-automation" | xargs kill -9 2>/dev/null 
+  
+  if dial_type=$(type deactivate 2>/dev/null); then
+    deactivate
+  fi >/dev/null &!
+  
+  echo "🔴 govee server terminated..."
+}
+
+workmode() {
+  sleep 35
+
+  # Alienware left — iTerm2
+  osascript -e 'tell application "System Events"
+    set position of window 1 of process "iTerm2" to {0, 0}
+    set size of window 1 of process "iTerm2" to {960, 1080}
+  end tell'
+
+  # Alienware right — VS Code
+  open -a "Visual Studio Code"
+  sleep 2
+  osascript -e 'tell application "System Events"
+    set position of window 1 of process "Code" to {960, 0}
+    set size of window 1 of process "Code" to {960, 1080}
+  end tell'
+
+  # Asus left — GitHub
+  open -na "Google Chrome" --args --new-window "https://github.com/bkness"
+  sleep 2
+  osascript -e 'tell application "System Events"
+    set position of window 1 of process "Google Chrome" to {1920, 0}
+    set size of window 1 of process "Google Chrome" to {960, 1080}
+  end tell'
+
+  # Asus right — MDN Array docs
+  sleep 1
+  open -na "Google Chrome" --args --new-window "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array"
+  sleep 2
+  osascript -e 'tell application "System Events"
+    set position of window 1 of process "Google Chrome" to {2880, 0}
+    set size of window 1 of process "Google Chrome" to {960, 1080}
+  end tell'
+
+  # MacBook left — Reanimated docs
+  sleep 1
+  open -na "Google Chrome" --args --new-window "https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started"
+  sleep 2
+  osascript -e 'tell application "System Events"
+    set position of window 1 of process "Google Chrome" to {3840, 0}
+    set size of window 1 of process "Google Chrome" to {840, 900}
+  end tell'
+
+  # MacBook right — YouTube
+  sleep 1
+  open -na "Google Chrome" --args --new-window "https://www.youtube.com"
+  sleep 2
+  osascript -e 'tell application "System Events"
+    set position of window 1 of process "Google Chrome" to {4680, 0}
+    set size of window 1 of process "Google Chrome" to {840, 900}
+  end tell'
+
+  echo "Workspace ready. Go get em."
+}
