@@ -153,12 +153,12 @@ _govee_precmd() {
   if [[ $_GOVEE_CMD_WAS_PUSH -eq 1 ]]; then
     _GOVEE_CMD_WAS_PUSH=0
     if [[ $exit_code -eq 0 ]]; then
-      _govee_flash '{"name":"color","value":{"r":0,"g":255,"b":0}}'
-    else
-      _govee_flash '{"name":"color","value":{"r":255,"g":0,"b":0}}'
-    fi
+      _govee_flash '{"name":"color","value":{"r":0,"g":255,"b":0}}' >/dev/null &!
+    else 
+      _govee_flash '{"name":"color","value":{"r":255,"g":0,"b":0}}' >/dev/null &!
+    fi 
   elif [[ $exit_code -ne 0 ]]; then
-    _govee_flash '{"name":"color","value":{"r":255,"g":0,"b":0}}'
+    _govee_flash '{"name":"color","value":{"r":255,"g":0,"b":0}}' >/dev/null &!
   fi
 }
 
@@ -200,8 +200,8 @@ _shell_open() {
     local msg="● online | v$version | lights on | music up"
     [[ $(osascript -e 'tell application "Music" to get player state' 2>/dev/null) != "playing" ]] && \
       osascript -e 'open location "musics://music.apple.com/us/station/brandons-station/ra.u-40787829f08b63e81abb70ff757aa95f"' &!
-    _govee_boot "H6008" "$GOVEE_OFFICE" &!
-    _govee_boot "H610A" "$GOVEE_MAIN" &!
+    _govee_boot "H6008" "$GOVEE_OFFICE" >/dev/null &!
+    _govee_boot "H610A" "$GOVEE_MAIN" >/dev/null &!
     osascript -e "display notification \"$msg\" with title \"Shell opened\"" &!
   fi
 }
@@ -210,9 +210,9 @@ _shell_current() {
   local state
   local hour=$(date +%H%M)
     if [[ $hour -ge 1800 || $hour -lt 600 ]]; then
-      _govee_color "H610A" "$GOVEE_MAIN" 255 0 128 &!
+      _govee_color "H610A" "$GOVEE_MAIN" 255 0 128 >/dev/null &!
     else
-      _govee_color "H6008" "$GOVEE_OFFICE" 0 100 255 &!
+      _govee_color "H6008" "$GOVEE_OFFICE" 0 100 255 >/dev/null &!
     fi
   state=$(osascript -e 'tell application "Music" to get player state' 2>/dev/null)
 
@@ -269,9 +269,9 @@ alias editstarship='open ~/.config/starship.toml' # desc: Edit Starship prompt c
 alias c="clear" # desc: Clear terminal
 alias ..="cd .." # desc: Up one directory
 alias l="eza --icons --group-directories-first"
-alias vima="vim ~/dev/dotfiles/zsh/alias.zsh" 
+alias vima="vim ~/dev/dotfiles/zsh/aliases.zsh" 
 alias vimz="vim ~/dev/dotfiles/zsh"
-alias vimj="vim ~/dev/projects/"
+alias vimj="vim ~/dev/projects"
 alias ll="eza -la --icons" # desc: List all files (detailed, icons)
 alias ls="eza --icons" # desc: List files (icons)
 alias cat="bat" # desc: View file with syntax highlight
@@ -295,7 +295,7 @@ alias cl="claude --resume" # desc: Resume last Claude Code session
 alias goveestat='curl -s http://localhost:8000/lights -H "x-api-key: $GOVEE_SERVER_KEY" | python3 -m json.tool'
 
 pyserv() {
-  (cd ~/dev/projects/govee-automation && source .venv/bin/activate && uvicorn main:app --reload) &!
+  (cd ~/dev/projects/govee-automation && source .venv/bin/activate && uvicorn main:app --reload) >/dev/null &!
   echo "🟢 govee server starting..."
 }
 
@@ -304,7 +304,7 @@ killpy() {
   
   if dial_type=$(type deactivate 2>/dev/null); then
     deactivate
-  fi &!
+  fi >/dev/null &!
   
   echo "🔴 govee server terminated..."
 }
