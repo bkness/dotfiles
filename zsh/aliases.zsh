@@ -304,8 +304,8 @@ killpy() {
   
   if dial_type=$(type deactivate 2>/dev/null); then
     deactivate
-  fi
-
+  fi &!
+  
   echo "🔴 govee server terminated..."
 }
 
