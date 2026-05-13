@@ -190,13 +190,12 @@ _push_shell_status() {
 _shell_open() {
   [[ -f /tmp/workmode.lock ]] && return
   local prev=$(cat ~/.shell_count 2>/dev/null || echo 0)
-  local prev=$(cat ~/.shell_count 2>/dev/null || echo 0)
   local count=$(( prev + 1))
   [[ $count -gt 1 ]] && count=1
   echo $count > ~/.shell_count
   echo "shell count: $count:"
   if [[ $prev -eq 0 ]]; then
-    sleep 10 
+    sleep 6 
     online &!
     _push_shell_status &!
     local version=$(forged version 2>/dev/null | sed 's/forged-cli v//' || echo "unknown")
@@ -325,49 +324,46 @@ workmode() {
 
   # Alienware left - iTerm2
   osascript -e 'tell application "System Events"
-    set position of window 1 of process "iTerm2" to {0, 0}
+    set position of window 1 of process "iTerm2" to {0, 0}  
     set size of window 1 of process "iTerm2" to {960, 1080}
   end tell'
-
+  
   # Alienware right - VS Code
   open -a "Visual Studio Code"
-  sleep 2
   osascript -e 'tell application "System Events"
     set position of window 1 of process "Code" to {960, 0}
     set size of window 1 of process "Code" to {960, 1080}
   end tell'
 
   # Asus left - GitHub
-  open -na "Google Chrome" --args --new-window "https://github.com/bkness"
-  sleep 3
-  osascript -e 'tell application "System Events"
-    set position of window 1 of process "Google Chrome" to {1920, 0}
-    set size of window 1 of process "Google Chrome" to {960, 1080}
+  osascript -e 'tell application "Google Chrome"
+    set w to make new window
+    set bounds of w to {1923, 0, 2883, 1080}
+    set URL of active tab of w to "https://github.com/bkness"
   end tell'
+  sleep 2
 
   # Asus right - MDN
-  open -na "Google Chrome" --args --new-window "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array"
-  sleep 3 
-  osascript -e 'tell application "System Events"
-    set position of window 1 of process "Google Chrome" to {2880, 0}
-    set size of window 1 of process "Google Chrome" to {960, 1080}
+  osascript -e 'tell application "Google Chrome"
+    set w to make new window
+    set bounds of w to {2880, 0, 3840, 1080}
+    set URL of active tab of w to "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array"
   end tell'
-  sleep 1
+  sleep 2
 
   # MacBook left - Reanimated
-  open -na "Google Chrome" --args --new-window "https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started"
-  sleep 3
-  osascript -e 'tell application "System Events"
-    set position of window 1 of process "Google Chrome" to {3840, 0}
-    set size of window 1 of process "Google Chrome" to {840, 900}
+  osascript -e 'tell application "Google Chrome"
+    set w to make new window
+    set bounds of w to {3840, 0, 4680, 900}
+    set URL of active tab of w to "https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started"
   end tell'
+  sleep 2
 
   # MacBook right - YouTube
-  open -na "Google Chrome" --args --new-window "https://www.youtube.com"
-  sleep 3
-  osascript -e 'tell application "System Events"
-    set position of window 1 of process "Google Chrome" to {4680, 0}
-    set size of window 1 of process "Google Chrome" to {840, 900}
+  osascript -e 'tell application "Google Chrome"
+    set w to make new window
+    set bounds of w to {4680, 0, 5520, 900}
+    set URL of active tab of w to "https://www.youtube.com"
   end tell'
 
   rm /tmp/workmode.lock
