@@ -307,7 +307,8 @@ killpy() {
 workmode() {
   [[ -f /tmp/workmode.lock ]] && echo "workmode already running" && return
   touch /tmp/workmode.lock
-
+  
+  pyserv
   sleep 5
 
   # Alienware left - iTerm2
@@ -315,15 +316,6 @@ workmode() {
     set position of window 1 of process "iTerm2" to {0, 0}
     set size of window 1 of process "iTerm2" to {960, 1080}
   end tell'
-
-  # Start Python server in new iTerm2 window
-  osascript -e 'tell application "iTerm2"
-    create window with default profile
-    tell current session of current window
-      write text "pyserv"
-    end tell
-  end tell'
-  sleep 2
 
   # Alienware right - VS Code
   open -a "Visual Studio Code"
