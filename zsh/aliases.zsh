@@ -204,7 +204,7 @@ _shell_open() {
     [[ $(osascript -e 'tell application "Music" to get player state' 2>/dev/null) != "playing" ]] && \
       osascript -e 'open location "musics://music.apple.com/us/station/brandons-station/ra.u-40787829f08b63e81abb70ff757aa95f"' &!
     osascript -e "display notification \"$msg\" with title \"Shell opened\"" &!
-    { sleep 10 && workmode } &!
+    { workmode } &!
   fi
 }  
 
