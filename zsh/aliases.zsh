@@ -188,13 +188,15 @@ _push_shell_status() {
 }
   
 _shell_open() {
+  [[ -f /tmp/workmode.lock ]] && return
   local prev=$(cat ~/.shell_count 2>/dev/null || echo 0)
   local count=$(( prev + 1))
   [[ $count -gt 1 ]] && count=1
   echo $count > ~/.shell_count
   echo "shell count: $count:"
   if [[ $prev -eq 0 ]]; then
-    sleep 20 
+    mkdir /tmp/boot_once 2>/dev/null || return
+    sleep 6
     online &!
     _push_shell_status &!
     local version=$(forged version 2>/dev/null | sed 's/forged-cli v//' || echo "unknown")
@@ -202,7 +204,7 @@ _shell_open() {
     [[ $(osascript -e 'tell application "Music" to get player state' 2>/dev/null) != "playing" ]] && \
       osascript -e 'open location "musics://music.apple.com/us/station/brandons-station/ra.u-40787829f08b63e81abb70ff757aa95f"' &!
     osascript -e "display notification \"$msg\" with title \"Shell opened\"" &!
-    workmode &!
+    { workmode } &!
   fi
 }  
 
@@ -307,54 +309,53 @@ killpy() {
 workmode() {
   [[ -f /tmp/workmode.lock ]] && echo "workmode already running" && return
   touch /tmp/workmode.lock
-
+ 
+  # Open server window 
+  osascript -e 'tell application "iTerm2"
+    create window with default profile
+    tell current session of current window
+      write text "sleep 3 && pyserv"
+    end tell
+  end tell'
   sleep 5
+
+  # Lights on - server should be ready
+  _govee_boot "H6008" "$GOVEE_OFFICE"
+  _govee_boot "H610A" "$GOVEE_MAIN"
 
   # Alienware left - iTerm2
   osascript -e 'tell application "System Events"
-    set position of window 1 of process "iTerm2" to {0, 0}
+    set position of window 1 of process "iTerm2" to {0, 0}  
     set size of window 1 of process "iTerm2" to {960, 1080}
   end tell'
-
+  
   # Alienware right - VS Code
   open -a "Visual Studio Code"
-  sleep 2
   osascript -e 'tell application "System Events"
     set position of window 1 of process "Code" to {960, 0}
     set size of window 1 of process "Code" to {960, 1080}
   end tell'
 
-  # Asus left - GitHub
-  open -na "Google Chrome" --args --new-window "https://github.com/bkness"
-  sleep 3
-  osascript -e 'tell application "System Events"
-    set position of window 1 of process "Google Chrome" to {1920, 0}
-    set size of window 1 of process "Google Chrome" to {960, 1080}
-  end tell'
-
-  # Asus right - MDN
-  open -na "Google Chrome" --args --new-window "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array"
-  sleep 3 
-  osascript -e 'tell application "System Events"
-    set position of window 1 of process "Google Chrome" to {2880, 0}
-    set size of window 1 of process "Google Chrome" to {960, 1080}
-  end tell'
-
-  # MacBook left - Reanimated
-  open -na "Google Chrome" --args --new-window "https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started"
-  sleep 3
-  osascript -e 'tell application "System Events"
-    set position of window 1 of process "Google Chrome" to {3840, 0}
-    set size of window 1 of process "Google Chrome" to {840, 900}
-  end tell'
-
-  # MacBook right - YouTube
-  open -na "Google Chrome" --args --new-window "https://www.youtube.com"
-  sleep 3
-  osascript -e 'tell application "System Events"
-    set position of window 1 of process "Google Chrome" to {4680, 0}
-    set size of window 1 of process "Google Chrome" to {840, 900}
-  end tell'
+  # Launch Chrome, kill its auto-opened window, then place all 4 windows
+  osascript <<'CHROME'
+tell application "Google Chrome"
+  activate
+  delay 3
+  close every window
+  set w to make new window
+  set bounds of w to {1923, 0, 2883, 1080}
+  set URL of active tab of w to "https://github.com/bkness"
+  set w to make new window
+  set bounds of w to {2880, 0, 3840, 1080}
+  set URL of active tab of w to "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array"
+  set w to make new window
+  set bounds of w to {3840, 0, 4680, 1050}
+  set URL of active tab of w to "https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started"
+  set w to make new window
+  set bounds of w to {4680, 0, 5520, 1050}
+  set URL of active tab of w to "https://www.youtube.com"
+end tell
+CHROME
 
   rm /tmp/workmode.lock
   echo "Workspace ready. Go get em. 🚀"
