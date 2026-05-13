@@ -194,7 +194,7 @@ _shell_open() {
   echo $count > ~/.shell_count
   echo "shell count: $count:"
   if [[ $prev -eq 0 ]]; then
-    sleep 20 
+    sleep 10 
     online &!
     _push_shell_status &!
     local version=$(forged version 2>/dev/null | sed 's/forged-cli v//' || echo "unknown")
@@ -316,6 +316,15 @@ workmode() {
     set size of window 1 of process "iTerm2" to {960, 1080}
   end tell'
 
+  # Start Python server in new iTerm2 window
+  osascript -e 'tell application "iTerm2"
+    create window with default profile
+    tell current session of current window
+      write text "pyserv"
+    end tell
+  end tell'
+  sleep 2
+
   # Alienware right - VS Code
   open -a "Visual Studio Code"
   sleep 2
@@ -337,6 +346,7 @@ workmode() {
   sleep 3 
   osascript -e 'tell application "System Events"
     set position of window 1 of process "Google Chrome" to {2880, 0}
+    sleep 1
     set size of window 1 of process "Google Chrome" to {960, 1080}
   end tell'
 
