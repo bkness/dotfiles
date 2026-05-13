@@ -341,7 +341,6 @@ workmode() {
     set bounds of w to {1923, 0, 2883, 1080}
     set URL of active tab of w to "https://github.com/bkness"
   end tell'
-  sleep 2
 
   # Asus right - MDN
   osascript -e 'tell application "Google Chrome"
@@ -349,20 +348,18 @@ workmode() {
     set bounds of w to {2880, 0, 3840, 1080}
     set URL of active tab of w to "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array"
   end tell'
-  sleep 2
 
   # MacBook left - Reanimated
   osascript -e 'tell application "Google Chrome"
     set w to make new window
-    set bounds of w to {3840, 0, 4680, 900}
+    set bounds of w to {3840, 0, 4680, 1050}
     set URL of active tab of w to "https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started"
   end tell'
-  sleep 2
 
   # MacBook right - YouTube
   osascript -e 'tell application "Google Chrome"
     set w to make new window
-    set bounds of w to {4680, 0, 5520, 900}
+    set bounds of w to {4680, 0, 5520, 1050}
     set URL of active tab of w to "https://www.youtube.com"
   end tell'
 
