@@ -2,6 +2,7 @@
 # Zinit plugin manager
 # ---------------------------------------
 export PATH="/opt/homebrew/bin:$PATH"
+export PATH="/usr/local/share/dotnet:$PATH"
 
 source ~/.local/share/zinit/zinit.git/zinit.zsh
 source ~/dev/dotfiles/zsh/plugins.zsh
