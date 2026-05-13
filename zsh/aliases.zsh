@@ -314,10 +314,9 @@ workmode() {
   osascript -e 'tell application "iTerm2"
     create window with default profile
     tell current session of current window
-      write text "sleep 3 && pyserv"
+      write text "sleep 6 && pyserv"
     end tell
   end tell'
-  sleep 5
 
   # Lights on - server should be ready
   _govee_boot "H6008" "$GOVEE_OFFICE"
@@ -325,7 +324,7 @@ workmode() {
 
   # Alienware left - iTerm2
   osascript -e 'tell application "System Events"
-    set position of window 1 of process "iTerm2" to {0, 0}  
+    set position of window 1 of process "iTerm2" to {0, 0}
     set size of window 1 of process "iTerm2" to {960, 1080}
   end tell'
   
