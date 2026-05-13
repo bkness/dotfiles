@@ -1,24 +1,31 @@
+#!/usr/bin/env zsh
+exec > /tmp/boot.log 2>&1
+set -x
 
- application's main() function instead of opened.
-      -n, --new             Open a new instance of the application even if on#!/usr/bin/env zsh
+# 1. Python server — direct venv path, no source needed for launchd
+(/Users/ghost/dev/projects/govee-automation/.venv/bin/uvicorn main:app --reload --app-dir /Users/ghost/dev/projects/govee-automation) &!
 
-# 1. Python server — fires immediately, gets full 45s warmup
-(cd /Users/ghost/dev/projects/govee-automation && source .venv/bin/activate && uvicorn main:app --reload) &!
+# 2. Wait for server + DisplayLink warmup
+sleep 60
 
-# 2. Wait for DisplayLink + server warmup
-sleep 45
-
-# 3. Source env so vars are available outside zsh
+# 3. Load env vars
 source /Users/ghost/dev/dotfiles/zsh/env.zsh
 
-# 4. Everything else — server ready, displays stable
-online &!
-_push_shell_status &!
-_govee_boot "H6008" "$GOVEE_OFFICE" &!
-_govee_boot "H610A" "$GOVEE_MAIN" &!
+# 4. Govee lights — inline curl, no function dependency
+curl -s -X PUT "http://localhost:8000/lights/${GOVEE_OFFICE}/control?model=H6008" \
+  -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"turn","value":"on"}' &!
+
+curl -s -X PUT "http://localhost:8000/lights/${GOVEE_MAIN}/control?model=H610A" \
+  -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"turn","value":"on"}' &!
+
+# 5. Music
 [[ $(osascript -e 'tell application "Music" to get player state' 2>/dev/null) != "playing" ]] && \
   osascript -e 'open location "musics://music.apple.com/us/station/brandons-station/ra.u-40787829f08b63e81abb70ff757aa95f"' &!
-osascript -e 'display notification "● online | lights on | music up" with title "Boot complete"' &!
-~
-~
-~
+
+# 6. Wait for iTerm2 to open from Login Items
+sleep 10
+
+# 7. Notification
+osascript -e 'display notification "● lights on | music up | workspace ready" with title "Boot complete"' &!
