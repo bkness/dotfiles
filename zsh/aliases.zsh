@@ -307,9 +307,19 @@ killpy() {
 workmode() {
   [[ -f /tmp/workmode.lock ]] && echo "workmode already running" && return
   touch /tmp/workmode.lock
-  
-  pyserv
+ 
+  # Open server window 
+  osascript -e 'tell application "iTerm2"
+    create window with default profile
+    tell current session of current window
+      write text "pyserv"
+    end tell
+  end tell'
   sleep 5
+
+  # Lights on - server should be ready
+  _govee_boot "H6008" "$GOVEE_OFFICE"
+  _govee_boot "H610A" "$GOVEE_MAIN"
 
   # Alienware left - iTerm2
   osascript -e 'tell application "System Events"
@@ -338,9 +348,9 @@ workmode() {
   sleep 3 
   osascript -e 'tell application "System Events"
     set position of window 1 of process "Google Chrome" to {2880, 0}
-    sleep 1
     set size of window 1 of process "Google Chrome" to {960, 1080}
   end tell'
+  sleep 1
 
   # MacBook left - Reanimated
   open -na "Google Chrome" --args --new-window "https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started"
