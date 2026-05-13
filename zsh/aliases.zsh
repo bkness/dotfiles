@@ -188,6 +188,8 @@ _push_shell_status() {
 }
   
 _shell_open() {
+  [[ -f /tmp/workmode.lock ]] && return
+  local prev=$(cat ~/.shell_count 2>/dev/null || echo 0)
   local prev=$(cat ~/.shell_count 2>/dev/null || echo 0)
   local count=$(( prev + 1))
   [[ $count -gt 1 ]] && count=1
@@ -312,7 +314,7 @@ workmode() {
   osascript -e 'tell application "iTerm2"
     create window with default profile
     tell current session of current window
-      write text "pyserv"
+      write text "sleep 3 && pyserv"
     end tell
   end tell'
   sleep 5
