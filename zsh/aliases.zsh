@@ -195,7 +195,8 @@ _shell_open() {
   echo $count > ~/.shell_count
   echo "shell count: $count:"
   if [[ $prev -eq 0 ]]; then
-    sleep 6 
+    mkdir /tmp/boot_once 2>/dev/null || return
+    sleep 6
     online &!
     _push_shell_status &!
     local version=$(forged version 2>/dev/null | sed 's/forged-cli v//' || echo "unknown")
@@ -203,7 +204,7 @@ _shell_open() {
     [[ $(osascript -e 'tell application "Music" to get player state' 2>/dev/null) != "playing" ]] && \
       osascript -e 'open location "musics://music.apple.com/us/station/brandons-station/ra.u-40787829f08b63e81abb70ff757aa95f"' &!
     osascript -e "display notification \"$msg\" with title \"Shell opened\"" &!
-    workmode &!
+    { sleep 10 && workmode } &!
   fi
 }  
 
@@ -335,33 +336,26 @@ workmode() {
     set size of window 1 of process "Code" to {960, 1080}
   end tell'
 
-  # Asus left - GitHub
-  osascript -e 'tell application "Google Chrome"
-    set w to make new window
-    set bounds of w to {1923, 0, 2883, 1080}
-    set URL of active tab of w to "https://github.com/bkness"
-  end tell'
-
-  # Asus right - MDN
-  osascript -e 'tell application "Google Chrome"
-    set w to make new window
-    set bounds of w to {2880, 0, 3840, 1080}
-    set URL of active tab of w to "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array"
-  end tell'
-
-  # MacBook left - Reanimated
-  osascript -e 'tell application "Google Chrome"
-    set w to make new window
-    set bounds of w to {3840, 0, 4680, 1050}
-    set URL of active tab of w to "https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started"
-  end tell'
-
-  # MacBook right - YouTube
-  osascript -e 'tell application "Google Chrome"
-    set w to make new window
-    set bounds of w to {4680, 0, 5520, 1050}
-    set URL of active tab of w to "https://www.youtube.com"
-  end tell'
+  # Launch Chrome, kill its auto-opened window, then place all 4 windows
+  osascript <<'CHROME'
+tell application "Google Chrome"
+  activate
+  delay 3
+  close every window
+  set w to make new window
+  set bounds of w to {1923, 0, 2883, 1080}
+  set URL of active tab of w to "https://github.com/bkness"
+  set w to make new window
+  set bounds of w to {2880, 0, 3840, 1080}
+  set URL of active tab of w to "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array"
+  set w to make new window
+  set bounds of w to {3840, 0, 4680, 1050}
+  set URL of active tab of w to "https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started"
+  set w to make new window
+  set bounds of w to {4680, 0, 5520, 1050}
+  set URL of active tab of w to "https://www.youtube.com"
+end tell
+CHROME
 
   rm /tmp/workmode.lock
   echo "Workspace ready. Go get em. 🚀"
