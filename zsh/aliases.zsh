@@ -325,36 +325,38 @@ workmode() {
     [[ -f /tmp/workmode.lock ]] && echo "workmode already running" && return
   fi
   touch /tmp/workmode.lock
- 
-  # Open server window 
-  osascript -e 'tell application "iTerm2"
-    create window with default profile
-    tell current session of current window
-      write text "sleep 3 && pyserv"
-    end tell
-  end tell'
-  sleep 3
+
+  # Alienware left - iTerm2
+  # Run pyserv in current window
+  osascript <<'ITERM'
+tell application "iTerm2"
+  activate
+  tell current session of current window
+    write text "pyserv"
+  end tell
+end tell
+ITERM
+
+   sleep 2
 
   # Lights on - server should be ready
   _govee_boot "H6008" "$GOVEE_OFFICE"
   _govee_boot "H610A" "$GOVEE_MAIN"
 
-  # Alienware left - iTerm2
-  osascript <<'ITERM'
+
+  # Position existing window
+  osascript <<'ITERM2'
 tell application "iTerm2"
-  activate
-  delay 1
   tell current window
     set bounds to {0, 0, 1282, 1440}
   end tell
 end tell
-ITERM
+ITERM2
 
   # Alienware right - VS Code
   open -a "Visual Studio Code"
   osascript <<'VSCODE'
 tell application "Visual Studio Code" to activate
-delay 2
 tell application "System Events"
   tell process "Code"
     set position of window 1 to {1277, 0}
