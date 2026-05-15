@@ -14,7 +14,7 @@ const stripeAnim = {
 };
 
 const triggerWorkmode = () => {
-    scheme.open("shortcuts://run-shortcut?name=Workmode");
+    $open("shortcuts://run-shortcut?name=Workmode");
 };
 
 if (skin === 0) {
