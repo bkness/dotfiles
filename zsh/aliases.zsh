@@ -104,8 +104,13 @@ govee() {
       echo "💡 $room → $action"
     done
 }
-zle -N govee # desc: create zle widget for govee menu
-bindkey '^V' govee # desc: Ctrl+V to open Govee light control menu
+_govee_widget() {
+  zle -I
+  govee
+  zle reset-prompt
+}
+zle -N _govee_widget # desc: create zle widget for govee menu
+bindkey '^V' _govee_widget # desc: Ctrl+V to open Govee light control menu
 
 _GOVEE_LAST_FLASH_GREEN=0
 _GOVEE_LAST_FLASH_RED=0
@@ -157,8 +162,6 @@ _govee_precmd() {
     else 
       _govee_flash '{"name":"color","value":{"r":255,"g":0,"b":0}}' >/dev/null &!
     fi 
-  elif [[ $exit_code -ne 0 ]]; then
-    _govee_flash '{"name":"color","value":{"r":255,"g":0,"b":0}}' >/dev/null &!
   fi
 }
 
@@ -195,8 +198,8 @@ _shell_open() {
   echo $count > ~/.shell_count
   echo "shell count: $count:"
   if [[ $prev -eq 0 ]]; then
-    mkdir /tmp/boot_once 2>/dev/null || return
-    sleep 6
+    mkdir /tmp/boot_once_$(date +%Y%m%d) 2>/dev/null || return
+    sleep 3
     online &!
     _push_shell_status &!
     local version=$(forged version 2>/dev/null | sed 's/forged-cli v//' || echo "unknown")
@@ -289,15 +292,19 @@ alias sz="source ~/.zshrc" # desc: Reload zsh config
 alias mkdir="mkdir -p"  # desc: Create directories (with parents)
 alias grep="grep --color=auto" # desc: Colored grep output
 alias cl="claude --resume" # desc: Resume last Claude Code session
+alias sandbox="open ~/dev/tools/js-sandbox.html"
+alias pixel='system_profiler SPDisplaysDataType | grep -E "Resolution|Position|Arrangement"'
+alias monpos='system_profiler SPDisplaysDataType | grep -A 20 "Resolution"'
+alias coord="cliclick p"
 
 # Govee light controls via interactive menu
 # Use: govee() to open fzf menu, pick room + action
 # All quick aliases (mon, moff, kon, lpink, etc.) are covered by the menu
 
-alias goveestat='curl -s http://localhost:8000/lights -H "x-api-key: $GOVEE_SERVER_KEY" | python3 -m json.tool'
+alias goveestat='curl -s http://localhost:8000/lights/ -H "x-api-key: $GOVEE_SERVER_KEY" | python3 -m json.tool'
 
 pyserv() {
-  (cd ~/dev/projects/govee-automation && source .venv/bin/activate && uvicorn main:app --reload) >/dev/null &!
+  (cd ~/dev/projects/govee-automation && source .venv/bin/activate && uvicorn app.main:app --reload) >/dev/null &!
   echo "🟢 govee server starting..."
 }
 
@@ -306,55 +313,88 @@ killpy() {
   echo "🔴 govee server terminated..."
 }
 
+_minimize() {
+  osascript -e "tell application \"System Events\" to set miniaturized of window 1 of process \"$1\" to true"
+}
+
 workmode() {
-  [[ -f /tmp/workmode.lock ]] && echo "workmode already running" && return
+  local force=0
+  [[ "$1" == "--force" || "$1" == "-f" ]] && force=1
+
+  if [[ $force -eq 0 ]]; then
+    [[ -f /tmp/workmode.lock ]] && echo "workmode already running" && return
+  fi
   touch /tmp/workmode.lock
  
   # Open server window 
   osascript -e 'tell application "iTerm2"
     create window with default profile
     tell current session of current window
-      write text "sleep 6 && pyserv"
+      write text "sleep 3 && pyserv"
     end tell
   end tell'
+  sleep 3
 
   # Lights on - server should be ready
   _govee_boot "H6008" "$GOVEE_OFFICE"
   _govee_boot "H610A" "$GOVEE_MAIN"
 
   # Alienware left - iTerm2
-  osascript -e 'tell application "System Events"
-    set position of window 1 of process "iTerm2" to {0, 0}
-    set size of window 1 of process "iTerm2" to {960, 1080}
-  end tell'
-  
+  osascript <<'ITERM'
+tell application "iTerm2"
+  activate
+  delay 1
+  tell current window
+    set bounds to {0, 0, 1282, 1440}
+  end tell
+end tell
+ITERM
+
   # Alienware right - VS Code
   open -a "Visual Studio Code"
-  osascript -e 'tell application "System Events"
-    set position of window 1 of process "Code" to {960, 0}
-    set size of window 1 of process "Code" to {960, 1080}
-  end tell'
+  osascript <<'VSCODE'
+tell application "Visual Studio Code" to activate
+delay 2
+tell application "System Events"
+  tell process "Code"
+    set position of window 1 to {1277, 0}
+    set size of window 1 to {1277, 1440}
+  end tell
+end tell
+VSCODE
 
   # Launch Chrome, kill its auto-opened window, then place all 4 windows
   osascript <<'CHROME'
 tell application "Google Chrome"
   activate
-  delay 3
+  delay 1
   close every window
   set w to make new window
-  set bounds of w to {1923, 0, 2883, 1080}
+  set bounds of w to {2561, 0, 3520, 1080}
   set URL of active tab of w to "https://github.com/bkness"
   set w to make new window
-  set bounds of w to {2880, 0, 3840, 1080}
+  set bounds of w to {3520, 0, 4480, 1080}
   set URL of active tab of w to "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array"
   set w to make new window
-  set bounds of w to {3840, 0, 4680, 1050}
+  set bounds of w to {4485, 77, 5322, 1123}
   set URL of active tab of w to "https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started"
   set w to make new window
-  set bounds of w to {4680, 0, 5520, 1050}
+  set bounds of w to {5322, 77, 6160, 1123}
   set URL of active tab of w to "https://www.youtube.com"
 end tell
 CHROME
+
+ # Return focus to iTerm2
+  osascript <<'FOCUS'
+tell application "iTerm2"
+  activate
+  tell current window
+    tell current session
+      select
+    end tell
+  end tell
+end tell
+FOCUS
 
   rm /tmp/workmode.lock
   echo "Workspace ready. Go get em. 🚀"
