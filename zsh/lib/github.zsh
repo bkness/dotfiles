@@ -377,91 +377,98 @@ github_ui_prs() {
 }
 
 github_ui_issues() {
-  local header_action
-  header_action=$(printf '%s\n' \
-    "  📋  List Issues" \
-    "  🆕  Create Issue" \
-    "  ← back" \
-    | fzf "${FZF_THEME[@]}" \
-        --border=rounded \
-        --border-label='  ◈  ISSUES  ' \
-        --prompt='  ❯ ' \
-        --height=25%) || return
-
-  [[ "${header_action##  }" == "← back" ]] && { github_ui; return; }
-  [[ "${header_action##  }" == "🆕  Create Issue" ]] && { _github_create_issue; return; }
-
-  local selected
-  selected=$(gh issue list --limit 30 \
-    --json number,title,assignees,labels \
-    --jq '.[] | "#" + (.number | tostring) + "  " + .title + "\t" + (if (.assignees | length) > 0 then .assignees[0].login else "unassigned" end) + "  " + (.labels | map(.name) | join(", "))' \
-    | column -t -s $'\t' \
-    | fzf "${FZF_THEME[@]}" \
+  while true; do
+    local header_action
+    header_action=$(printf '%s\n' \
+      "  📋  List Issues" \
+      "  🆕  Create Issue" \
+      "  ← back" \
+      | fzf "${FZF_THEME[@]}" \
           --border=rounded \
           --border-label='  ◈  ISSUES  ' \
           --prompt='  ❯ ' \
-          --preview='gh issue view $(echo {} | grep -o "^#[0-9]*" | tr -d "#") 2>/dev/null' \
-          --preview-window=right:55% \
-          --preview-label='  Issue Details  ') || return
+          --height=25%) || return
 
-  local number
-  number=$(echo "$selected" | grep -o '^#[0-9]*' | tr -d '#')
+    [[ "${header_action##  }" == "← back" ]] && { github_ui; return; }
+    [[ "${header_action##  }" == "🆕  Create Issue" ]] && { _github_create_issue; return; }
 
-  local action
-  action=$(printf '%s\n' \
-    "  🔗  Open in browser" \
-    "  👁   View" \
-    "  🌿  Start Branch" \
-    "  🔀  Open PR" \
-    "  🏷   Label" \
-    "  ✅  Close" \
-    "  💬  Comment" \
-    "  ← back" \
-    | fzf "${FZF_THEME[@]}" \
-        --border=rounded \
-        --border-label='  ◈  ACTION  ' \
-        --prompt='  ❯ ' \
-        --height=40%) || return
+    while true; do
+      local selected
+      selected=$({ printf '%s\n' "  ← back"; gh issue list --limit 30 \
+        --json number,title,assignees,labels \
+        --jq '.[] | "#" + (.number | tostring) + "  " + .title + "\t" + (if (.assignees | length) > 0 then .assignees[0].login else "unassigned" end) + "  " + (.labels | map(.name) | join(", "))' \
+        | column -t -s $'\t'; } \
+        | fzf "${FZF_THEME[@]}" \
+              --border=rounded \
+              --border-label='  ◈  ISSUES  ' \
+              --prompt='  ❯ ' \
+              --preview='n=$(echo {} | grep -o "^#[0-9]*" | tr -d "#"); [[ -n "$n" ]] && gh issue view "$n" 2>/dev/null || echo "  Return to issues menu"' \
+              --preview-window=right:55% \
+              --preview-label='  Issue Details  ') || break
 
-  case "${action##  }" in
-    "← back") github_ui; return ;;
-    "🔗  Open in browser") gh issue view "$number" --web ;;
-    "👁   View")           gh issue view "$number" ;;
-    "🌿  Start Branch")
-      local branch_type
-      branch_type=$(printf '%s\n' "  fix" "  feature" "  chore" \
+      [[ "${selected##  }" == "← back" ]] && break
+
+      local number
+      number=$(echo "$selected" | grep -o '^#[0-9]*' | tr -d '#')
+
+      local action
+      action=$(printf '%s\n' \
+        "  🔗  Open in browser" \
+        "  👁   View" \
+        "  🌿  Start Branch" \
+        "  🔀  Open PR" \
+        "  🏷   Label" \
+        "  ✅  Close" \
+        "  💬  Comment" \
+        "  ← back" \
         | fzf "${FZF_THEME[@]}" \
             --border=rounded \
-            --border-label='  ◈  BRANCH TYPE  ' \
+            --border-label='  ◈  ACTION  ' \
             --prompt='  ❯ ' \
-            --height=25%) || return
-      branch_type="${branch_type##  }"
-      local issue_title
-      issue_title=$(gh issue view "$number" --json title --jq '.title' 2>/dev/null)
-      local slug
-      slug=$(echo "$issue_title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-40)
-      local branch="${branch_type}/${number}-${slug}"
-      git switch -c "$branch" && echo "  ✅ Switched to $branch"
-      _gh_project_set_status "$number" "In Progress" &!
-      ;;
-    "🔀  Open PR")         github_ui_open_pr ;;
-    "🏷   Label")
-      local label
-      label=$(gh label list --json name --jq '.[].name' 2>/dev/null \
-        | fzf "${FZF_THEME[@]}" \
-            --border=rounded \
-            --border-label='  ◈  LABEL  ' \
-            --prompt='  ❯ ' \
-            --height=40%) || return
-      gh issue edit "$number" --add-label "$label" && echo "  ✅ Labeled #$number → $label"
-      ;;
-    "✅  Close")           gh issue close "$number" && echo "  ✅ Closed #$number" ;;
-    "💬  Comment")
-      local body
-      read "body?Comment: "
-      [[ -n "$body" ]] && gh issue comment "$number" --body "$body"
-      ;;
-  esac
+            --height=40%) || continue
+
+      case "${action##  }" in
+        "← back") continue ;;
+        "🔗  Open in browser") gh issue view "$number" --web ;;
+        "👁   View")           gh issue view "$number" ;;
+        "🌿  Start Branch")
+          local branch_type
+          branch_type=$(printf '%s\n' "  fix" "  feature" "  chore" \
+            | fzf "${FZF_THEME[@]}" \
+                --border=rounded \
+                --border-label='  ◈  BRANCH TYPE  ' \
+                --prompt='  ❯ ' \
+                --height=25%) || continue
+          branch_type="${branch_type##  }"
+          local issue_title
+          issue_title=$(gh issue view "$number" --json title --jq '.title' 2>/dev/null)
+          local slug
+          slug=$(echo "$issue_title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-40)
+          local branch="${branch_type}/${number}-${slug}"
+          git switch -c "$branch" && echo "  ✅ Switched to $branch"
+          _gh_project_set_status "$number" "In Progress" &!
+          ;;
+        "🔀  Open PR")         github_ui_open_pr ;;
+        "🏷   Label")
+          local label
+          label=$(gh label list --json name --jq '.[].name' 2>/dev/null \
+            | fzf "${FZF_THEME[@]}" \
+                --border=rounded \
+                --border-label='  ◈  LABEL  ' \
+                --prompt='  ❯ ' \
+                --height=40%) || continue
+          gh issue edit "$number" --add-label "$label" && echo "  ✅ Labeled #$number → $label"
+          ;;
+        "✅  Close")           gh issue close "$number" && echo "  ✅ Closed #$number" ;;
+        "💬  Comment")
+          local body
+          read "body?Comment: "
+          [[ -n "$body" ]] && gh issue comment "$number" --body "$body"
+          ;;
+      esac
+      return
+    done
+  done
 }
 
 github_ui_push_commit() {
@@ -662,61 +669,81 @@ github_ui_log() {
 github_ui_messages() {
   _gh_check || return
 
-  local action
-  action=$(printf '%s\n' \
-    "  🔔  Notifications" \
-    "  💬  Discussions" \
-    "  ← back" \
-    | fzf "${FZF_THEME[@]}" \
-        --border=rounded \
-        --border-label='  ◈  MESSAGES  ' \
-        --prompt='  ❯ ' \
-        --height=25%) || return
+  while true; do
+    local action
+    action=$(printf '%s\n' \
+      "  🔔  Notifications" \
+      "  💬  Discussions" \
+      "  ← back" \
+      | fzf "${FZF_THEME[@]}" \
+          --border=rounded \
+          --border-label='  ◈  MESSAGES  ' \
+          --prompt='  ❯ ' \
+          --height=25%) || return
 
-  case "${action##  }" in
-    "← back") github_ui; return ;;
-    "🔔  Notifications")
-      local notifications
-      notifications=$(gh api notifications \
-        --jq '.[] | "\(.id)\t\(.subject.type)\t\(.repository.full_name)\t\(.subject.title)"' \
-        2>/dev/null | column -t -s $'\t')
-      if [[ -z "$notifications" ]]; then
-        echo "  ✅ No unread notifications"
-        return
-      fi
-      echo "$notifications" \
-        | fzf "${FZF_THEME[@]}" \
-            --border=rounded \
-            --border-label='  ◈  NOTIFICATIONS  ' \
-            --prompt='  ❯ ' \
-            --preview='echo {}' \
-            --preview-window=down:3:wrap
-      ;;
-    "💬  Discussions")
-      local repo
-      repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null)
-      if [[ -z "$repo" ]]; then
-        echo "  ⚠️  No GitHub repo detected" >&2
-        return 1
-      fi
-      local owner="${repo%/*}" rname="${repo#*/}"
-      gh api graphql -f query="
-        query {
-          repository(owner: \"$owner\", name: \"$rname\") {
-            discussions(first: 30, orderBy: {field: UPDATED_AT, direction: DESC}) {
-              nodes { number title author { login } }
+    case "${action##  }" in
+      "← back") github_ui; return ;;
+      "🔔  Notifications")
+        local raw_notifs
+        raw_notifs=$(gh api notifications \
+          --jq '.[] | "\(.id)\t\(.subject.type)\t\(.repository.full_name)\t\(.subject.title)§\(.subject.url // "")"' \
+          2>/dev/null)
+        if [[ -z "$raw_notifs" ]]; then
+          echo "  ✅ No unread notifications"
+          continue
+        fi
+        local selected
+        selected=$({ printf '%s\n' "  ← back"; echo "$raw_notifs" \
+          | sed 's/§.*//' | column -t -s $'\t'; } \
+          | fzf "${FZF_THEME[@]}" \
+              --border=rounded \
+              --border-label='  ◈  NOTIFICATIONS  ' \
+              --prompt='  ❯ ' \
+              --preview='echo {}' \
+              --preview-window=down:3:wrap) || continue
+        [[ "${selected##  }" == "← back" ]] && continue
+        local notif_id api_url web_url
+        notif_id=$(echo "$selected" | awk '{print $1}')
+        api_url=$(echo "$raw_notifs" | grep "^${notif_id}" | sed 's/.*§//')
+        web_url=$(echo "$api_url" | sed \
+          's|https://api\.github\.com/repos/|https://github.com/|;
+           s|/pulls/|/pull/|;
+           s|/commits/|/commit/|')
+        [[ -n "$web_url" ]] && open "$web_url"
+        gh api -X PATCH "notifications/threads/$notif_id" >/dev/null 2>&1
+        ;;
+      "💬  Discussions")
+        local repo
+        repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null)
+        if [[ -z "$repo" ]]; then
+          echo "  ⚠️  No GitHub repo detected" >&2
+          continue
+        fi
+        local owner="${repo%/*}" rname="${repo#*/}"
+        local disc_selected
+        disc_selected=$({ printf '%s\n' "  ← back"; gh api graphql -f query="
+          query {
+            repository(owner: \"$owner\", name: \"$rname\") {
+              discussions(first: 30, orderBy: {field: UPDATED_AT, direction: DESC}) {
+                nodes { number title author { login } }
+              }
             }
-          }
-        }" \
-        --jq '.data.repository.discussions.nodes[] | "#\(.number)  \(.author.login)  \(.title)"' \
-        | fzf "${FZF_THEME[@]}" \
-            --border=rounded \
-            --border-label='  ◈  DISCUSSIONS  ' \
-            --prompt='  ❯ ' \
-            --preview-window=right:55%:wrap \
-            --bind='enter:execute(gh browse {1} 2>/dev/null)'
-      ;;
-  esac
+          }" \
+          --jq '.data.repository.discussions.nodes[] | "#\(.number)  \(.author.login)  \(.title)"' \
+          2>/dev/null; } \
+          | fzf "${FZF_THEME[@]}" \
+              --border=rounded \
+              --border-label='  ◈  DISCUSSIONS  ' \
+              --prompt='  ❯ ' \
+              --preview-window=right:55%:wrap) || continue
+        [[ "${disc_selected##  }" == "← back" ]] && continue
+        local disc_num
+        disc_num=$(echo "$disc_selected" | grep -o '^#[0-9]*' | tr -d '#')
+        [[ -n "$disc_num" ]] && gh browse "$disc_num" 2>/dev/null
+        ;;
+    esac
+    return
+  done
 }
 
 # ── issue creation with labels + optional branch ─────────────
