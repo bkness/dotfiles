@@ -505,7 +505,7 @@ github_ui_issues() {
                 --height=40%) || continue
           gh issue edit "$number" --add-label "$label" && echo "  ✅ Labeled #$number → $label"
           ;;
-        "✅  Close")           _gh_confirm "Close issue #$number?" && gh issue close "$number" && echo "  ✅ Closed #$number" ;;
+        "✅  Close")           _gh_confirm "Close issue #$number?" && gh issue close "$number" && _GH_MSG="  ✅ Closed issue #$number" ;;
         "💬  Comment")
           local body
           read "body?Comment: "
