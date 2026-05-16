@@ -467,7 +467,8 @@ github_ui_issues() {
 github_ui_push_commit() {
   local branch
   branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || return
-  git push origin "$branch" && echo "✅ Pushed $branch to origin" || echo "❌ Failed to push $branch"
+  git push origin HEAD 2>/dev/null || git push --set-upstream origin HEAD \
+    && echo "✅ Pushed $branch to origin" || echo "❌ Failed to push $branch"
 }
 
 github_ui_issues_create() { _github_create_issue }
@@ -538,69 +539,74 @@ github_ui_status() {
 
 # ── branches ─────────────────────────────────────────────────
 github_ui_branches() {
-  local action
-  action=$(printf '%s\n' \
-    "  🔀  Switch" \
-    "  🌱  Create" \
-    "  🗑   Delete" \
-    "  ← back" \
-    | fzf "${FZF_THEME[@]}" \
-        --border=rounded \
-        --border-label='  ◈  BRANCHES  ' \
-        --prompt='  ❯ ' \
-        --height=30%) || return
+  while true; do
+    local action
+    action=$(printf '%s\n' \
+      "  🔀  Switch" \
+      "  🌱  Create" \
+      "  🗑   Delete" \
+      "  ← back" \
+      | fzf "${FZF_THEME[@]}" \
+          --border=rounded \
+          --border-label='  ◈  BRANCHES  ' \
+          --prompt='  ❯ ' \
+          --height=30%) || return
 
-  case "${action##  }" in
-    "← back") github_ui; return ;;
-    "🔀  Switch")
-      local branch
-      branch=$(git branch --no-color \
-        | grep -v 'HEAD' \
-        | grep -v '^\*' \
-        | sed 's|^[* ]*||' \
-        | sort -u \
-        | fzf "${FZF_THEME[@]}" \
-            --ansi \
-            --border=rounded \
-            --border-label='  ◈  SWITCH  ' \
-            --prompt='  ❯ ' \
-            --preview='git log --oneline --graph --color=always {-1} 2>/dev/null | head -20' \
-            --preview-window=right:55% \
-            --preview-label='  Log  ') || return
-      git switch "$branch" 2>/dev/null || git checkout "$branch"
-      _GH_MSG=" ✅ Switched to $branch"
-      ;;
-    "🌱  Create")
-      local name
-      echo -n "  Branch name: " >/dev/tty
-      read -r name </dev/tty || return
-      [[ -n "$name" ]] && git switch -c "$name" && _GH_MSG="  ✅ Created and switched to $name"
-      ;;
-    "🗑   Delete")
-      local branch
-      branch=$(git branch \
-        | grep -v '^\*' \
-        | sed 's/^[* ]*//' \
-        | grep -v '^\(main\|master\)$' \
-        | fzf "${FZF_THEME[@]}" \
-            --border=rounded \
-            --border-label='  ◈  DELETE  ' \
-            --prompt='  ❯ ' \
-            --preview='git log --oneline --color=always {-1} | head -10' \
-            --preview-window=right:55%) || return
-      echo -n "  Delete '$branch'? (y/n): " >/dev/tty
-      read -r confirm </dev/tty || return
-      if [[ "$confirm" == "y" ]]; then
-        if git branch -d "$branch" 2>/dev/null; then
-          _GH_MSG="  ✅ Deleted '$branch'"
-        else
-          echo -n "  ⚠️  Not fully merged. Force delete? (y/n): " >/dev/tty
-          read -r force </dev/tty
-          [[ "$force" == "y" ]] && git branch -D "$branch" && _GH_MSG="  ✅ Force deleted '$branch'"
+    case "${action##  }" in
+      "← back") github_ui; return ;;
+      "🔀  Switch")
+        local branch
+        branch=$({ printf '%s\n' "  ← back"; git branch --no-color \
+          | grep -v 'HEAD' \
+          | grep -v '^\*' \
+          | sed 's|^[* ]*||' \
+          | sort -u; } \
+          | fzf "${FZF_THEME[@]}" \
+              --ansi \
+              --border=rounded \
+              --border-label='  ◈  SWITCH  ' \
+              --prompt='  ❯ ' \
+              --preview='git log --oneline --graph --color=always {-1} 2>/dev/null | head -20' \
+              --preview-window=right:55% \
+              --preview-label='  Log  ') || continue
+        [[ "${branch##  }" == "← back" ]] && continue
+        git switch "$branch" 2>/dev/null || git checkout "$branch"
+        _GH_MSG=" ✅ Switched to $branch"
+        ;;
+      "🌱  Create")
+        local name
+        echo -n "  Branch name: " >/dev/tty
+        read -r name </dev/tty || continue
+        [[ -n "$name" ]] && git switch -c "$name" && _GH_MSG="  ✅ Created and switched to $name"
+        ;;
+      "🗑   Delete")
+        local branch
+        branch=$({ printf '%s\n' "  ← back"; git branch \
+          | grep -v '^\*' \
+          | sed 's/^[* ]*//' \
+          | grep -v '^\(main\|master\)$'; } \
+          | fzf "${FZF_THEME[@]}" \
+              --border=rounded \
+              --border-label='  ◈  DELETE  ' \
+              --prompt='  ❯ ' \
+              --preview='git log --oneline --color=always {-1} | head -10' \
+              --preview-window=right:55%) || continue
+        [[ "${branch##  }" == "← back" ]] && continue
+        echo -n "  Delete '$branch'? (y/n): " >/dev/tty
+        read -r confirm </dev/tty || continue
+        if [[ "$confirm" == "y" ]]; then
+          if git branch -d "$branch" 2>/dev/null; then
+            _GH_MSG="  ✅ Deleted '$branch'"
+          else
+            echo -n "  ⚠️  Not fully merged. Force delete? (y/n): " >/dev/tty
+            read -r force </dev/tty
+            [[ "$force" == "y" ]] && git branch -D "$branch" && _GH_MSG="  ✅ Force deleted '$branch'"
+          fi
         fi
-      fi
-      ;;
-  esac
+        ;;
+    esac
+    return
+  done
 }
 
 # ── stage & commit ───────────────────────────────────────────
