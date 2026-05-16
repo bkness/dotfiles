@@ -538,8 +538,11 @@ github_ui_push_commit() {
   local branch
   branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || return
   _gh_confirm "Push $branch to origin?" || return
-  git push origin HEAD 2>/dev/null || git push --set-upstream origin HEAD \
-    && echo "✅ Pushed $branch to origin" || echo "❌ Failed to push $branch"
+  if git push origin HEAD 2>/dev/null || git push --set-upstream origin HEAD; then
+    _GH_MSG="  ✅ Pushed $branch to origin"
+  else
+    _GH_MSG="  ❌ Failed to push $branch"
+  fi
 }
 
 github_ui_issues_create() { _github_create_issue }
@@ -720,7 +723,7 @@ github_ui_staging() {
 
   printf "\n  Commit message (blank to skip): " >/dev/tty
   read -r msg </dev/tty || return
-  [[ -n "$msg" ]] && git commit -m "$msg" && echo "  ✅ Committed: $msg"
+  [[ -n "$msg" ]] && git commit -m "$msg" && _GH_MSG="  ✅ Committed: $msg"
 }
 
 # ── log ──────────────────────────────────────────────────────
@@ -939,7 +942,7 @@ ${extra}"
   _gh_confirm "Push $branch to origin?" || return
   git push origin HEAD 2>/dev/null || git push --set-upstream origin HEAD
   gh pr create --title "$title" --body "$body" \
-    && echo "  ✅ PR created${number:+ — will close #$number on merge}"
+    && _GH_MSG="  ✅ PR created${number:+ — will close #$number on merge}"
   [[ -n "$number" ]] && _gh_project_sync "$number" "In Review" &!
 }
 
