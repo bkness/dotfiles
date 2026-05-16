@@ -331,44 +331,49 @@ github_ui_repos() {
 }
 
 github_ui_prs() {
-  local selected
-  selected=$(gh pr list --limit 30 \
-    --json number,title,author,headRefName \
-    --jq '.[] | "#" + (.number | tostring) + "  " + .title + "\t" + .author.login + " → " + .headRefName' \
-    | column -t -s $'\t' \
-    | fzf "${FZF_THEME[@]}" \
+  while true; do
+    local selected
+    selected=$({ printf '%s\n' "  ← back"; gh pr list --limit 30 \
+      --json number,title,author,headRefName \
+      --jq '.[] | "#" + (.number | tostring) + "  " + .title + "\t" + .author.login + " → " + .headRefName' \
+      | column -t -s $'\t'; } \
+      | fzf "${FZF_THEME[@]}" \
+            --border=rounded \
+            --border-label='  ◈  PULL REQUESTS  ' \
+            --prompt='  ❯ ' \
+            --preview='n=$(echo {} | grep -o "^#[0-9]*" | tr -d "#"); [[ -n "$n" ]] && gh pr view "$n" 2>/dev/null || echo "  Return to main menu"' \
+            --preview-window=right:55% \
+            --preview-label='  PR Details  ') || return
+
+    [[ "${selected##  }" == "← back" ]] && { github_ui; return; }
+
+    local number
+    number=$(echo "$selected" | grep -o '^#[0-9]*' | tr -d '#')
+
+    local action
+    action=$(printf '%s\n' \
+      "  🌿  Checkout" \
+      "  🔗  Open in browser" \
+      "  👁   View" \
+      "  ✅  Merge" \
+      "  ❌  Close" \
+      "  ← back" \
+      | fzf "${FZF_THEME[@]}" \
           --border=rounded \
-          --border-label='  ◈  PULL REQUESTS  ' \
+          --border-label='  ◈  ACTION  ' \
           --prompt='  ❯ ' \
-          --preview='gh pr view $(echo {} | grep -o "^#[0-9]*" | tr -d "#") 2>/dev/null' \
-          --preview-window=right:55% \
-          --preview-label='  PR Details  ') || return
+          --height=30%) || continue
 
-  local number
-  number=$(echo "$selected" | grep -o '^#[0-9]*' | tr -d '#')
-
-  local action
-  action=$(printf '%s\n' \
-    "  🌿  Checkout" \
-    "  🔗  Open in browser" \
-    "  👁   View" \
-    "  ✅  Merge" \
-    "  ❌  Close" \
-    "  ← back" \
-    | fzf "${FZF_THEME[@]}" \
-        --border=rounded \
-        --border-label='  ◈  ACTION  ' \
-        --prompt='  ❯ ' \
-        --height=30%) || return
-
-  case "${action##  }" in
-    "← back") github_ui; return ;;
-    "🌿  Checkout")        gh pr checkout "$number" ;;
-    "🔗  Open in browser") gh pr view "$number" --web ;;
-    "👁   View")           gh pr view "$number" ;;
-    "✅  Merge")           gh pr merge "$number" --squash ;;
-    "❌  Close")           gh pr close "$number" ;;
-  esac
+    case "${action##  }" in
+      "← back")              continue ;;
+      "🌿  Checkout")        gh pr checkout "$number" ;;
+      "🔗  Open in browser") gh pr view "$number" --web ;;
+      "👁   View")           gh pr view "$number" ;;
+      "✅  Merge")           gh pr merge "$number" --squash ;;
+      "❌  Close")           gh pr close "$number" ;;
+    esac
+    return
+  done
 }
 
 github_ui_issues() {
@@ -662,7 +667,7 @@ github_ui_messages() {
         --prompt='  ❯ ' \
         --height=25%) || return
 
-  case "${action## }" in
+  case "${action##  }" in
     "← back") github_ui; return ;;
     "🔔  Notifications")
       local notifications
@@ -720,7 +725,7 @@ _github_create_issue() {
   # Template picker — fetches ISSUE_TEMPLATE/ from the repo
   local template_body="" frontmatter_label=""
   local _templates
-  _templates=$(gh api "repos/${_repo}/contents/ISSUE_TEMPLATE" --jq '.[].name' 2>/dev/null)
+  _templates=$(gh api "repos/${_repo}/contents/ISSUE_TEMPLATE" 2>/dev/null | jq -r 'if type == "array" then .[].name else empty end' 2>/dev/null)
   if [[ -n "$_templates" ]]; then
     local _tpl
     _tpl=$(printf '%s\n' ${(f)_templates} "No template" \
