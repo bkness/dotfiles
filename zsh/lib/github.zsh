@@ -27,6 +27,13 @@ _in_github_repo() {
   git remote get-url origin 2>/dev/null | grep -q 'github\.com'
 }
 
+_gh_confirm() {
+  echo -n "  $1 (y/n): " >/dev/tty
+  local reply
+  read -r reply </dev/tty
+  [[ "$reply" == "y" ]]
+}
+
 _gh_repo_label() {
   git remote get-url origin 2>/dev/null \
     | sed 's|.*github\.com[/:]||; s/\.git$//' \
@@ -362,8 +369,8 @@ github_ui_prs() {
       "🌿  Checkout")        gh pr checkout "$number" ;;
       "🔗  Open in browser") gh pr view "$number" --web ;;
       "👁   View")           gh pr view "$number" ;;
-      "✅  Merge")           gh pr merge "$number" --squash ;;
-      "❌  Close")           gh pr close "$number" ;;
+      "✅  Merge")           _gh_confirm "Merge PR #$number?" && gh pr merge "$number" --squash ;;
+      "❌  Close")           _gh_confirm "Close PR #$number?" && gh pr close "$number" ;;
     esac
     return
   done
@@ -452,7 +459,7 @@ github_ui_issues() {
                 --height=40%) || continue
           gh issue edit "$number" --add-label "$label" && echo "  ✅ Labeled #$number → $label"
           ;;
-        "✅  Close")           gh issue close "$number" && echo "  ✅ Closed #$number" ;;
+        "✅  Close")           _gh_confirm "Close issue #$number?" && gh issue close "$number" && echo "  ✅ Closed #$number" ;;
         "💬  Comment")
           local body
           read "body?Comment: "
@@ -467,6 +474,7 @@ github_ui_issues() {
 github_ui_push_commit() {
   local branch
   branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null) || return
+  _gh_confirm "Push $branch to origin?" || return
   git push origin HEAD 2>/dev/null || git push --set-upstream origin HEAD \
     && echo "✅ Pushed $branch to origin" || echo "❌ Failed to push $branch"
 }
@@ -528,7 +536,7 @@ github_ui_sync_fork() {
     echo "⚠️  Not a fork"
     return 1
   fi
-  gh repo sync && echo "✅ Fork synced"
+  _gh_confirm "Sync fork from upstream?" && gh repo sync && echo "✅ Fork synced"
 }
 
 github_ui_status() {
