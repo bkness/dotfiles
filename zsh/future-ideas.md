@@ -24,3 +24,9 @@ edit_file_in_project() {
   [[ -n "$file" ]] && vim "$file"
 }
 
+
+## Stale branch detector
+On `chpwd` into a git repo, async-check `git log HEAD..origin/main --oneline`.
+If main has commits the current branch doesn't, fire a `zle -M` warning:
+"⚠️  main has N commits not yet on this branch. Pull from main?"
+Keep it async (&!) so it doesn't block prompt draw.
