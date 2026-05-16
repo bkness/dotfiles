@@ -34,15 +34,16 @@ _gh_confirm() {
   [[ "$reply" == "y" ]]
 }
 
-typeset -gA _GH_STALE_FETCH_DONE
-
 _gh_stale_warning() {
   git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return
-  local repo
-  repo=$(git rev-parse --show-toplevel 2>/dev/null)
-  if [[ -z "${_GH_STALE_FETCH_DONE[$repo]}" ]]; then
-    _GH_STALE_FETCH_DONE[$repo]=1
-    git fetch origin main --quiet 2>/dev/null &!
+  local git_dir
+  git_dir=$(git rev-parse --git-dir 2>/dev/null)
+  local fetch_head="$git_dir/FETCH_HEAD"
+  local last_fetch
+  last_fetch=$(stat -f %m "$fetch_head" 2>/dev/null)
+  last_fetch=${last_fetch:-0}
+  if (( $(date +%s) - last_fetch > 300 )); then
+    git fetch origin main --quiet 2>/dev/null
   fi
   local count
   count=$(git log HEAD..origin/main --oneline 2>/dev/null | wc -l | tr -d ' ')
