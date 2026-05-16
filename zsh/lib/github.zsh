@@ -311,6 +311,7 @@ github_ui_repos() {
     "  🔗  Open in browser" \
     "  📥  Clone" \
     "  👁   View" \
+    "  ← back" \
     | fzf "${FZF_THEME[@]}" \
         --border=rounded \
         --border-label='  ◈  ACTION  ' \
@@ -318,6 +319,7 @@ github_ui_repos() {
         --height=30%) || return
 
   case "${action##  }" in
+    "← back") github_ui; return ;;
     "🔗  Open in browser") gh repo view "$name" --web ;;
     "📥  Clone")
       local dest="$DEV_ROOT/$(basename $name)"
@@ -352,6 +354,7 @@ github_ui_prs() {
     "  👁   View" \
     "  ✅  Merge" \
     "  ❌  Close" \
+    "  ← back" \
     | fzf "${FZF_THEME[@]}" \
         --border=rounded \
         --border-label='  ◈  ACTION  ' \
@@ -359,6 +362,7 @@ github_ui_prs() {
         --height=30%) || return
 
   case "${action##  }" in
+    "← back") github_ui; return ;;
     "🌿  Checkout")        gh pr checkout "$number" ;;
     "🔗  Open in browser") gh pr view "$number" --web ;;
     "👁   View")           gh pr view "$number" ;;
@@ -372,12 +376,14 @@ github_ui_issues() {
   header_action=$(printf '%s\n' \
     "  📋  List Issues" \
     "  🆕  Create Issue" \
+    "  ← back" \
     | fzf "${FZF_THEME[@]}" \
         --border=rounded \
         --border-label='  ◈  ISSUES  ' \
         --prompt='  ❯ ' \
         --height=25%) || return
 
+  [[ "${header_action##  }" == "← back" ]] && { github_ui; return; }
   [[ "${header_action##  }" == "🆕  Create Issue" ]] && { _github_create_issue; return; }
 
   local selected
@@ -405,6 +411,7 @@ github_ui_issues() {
     "  🏷   Label" \
     "  ✅  Close" \
     "  💬  Comment" \
+    "  ← back" \
     | fzf "${FZF_THEME[@]}" \
         --border=rounded \
         --border-label='  ◈  ACTION  ' \
@@ -412,6 +419,7 @@ github_ui_issues() {
         --height=40%) || return
 
   case "${action##  }" in
+    "← back") github_ui; return ;;
     "🔗  Open in browser") gh issue view "$number" --web ;;
     "👁   View")           gh issue view "$number" ;;
     "🌿  Start Branch")
@@ -530,6 +538,7 @@ github_ui_branches() {
     "  🔀  Switch" \
     "  🌱  Create" \
     "  🗑   Delete" \
+    "  ← back" \
     | fzf "${FZF_THEME[@]}" \
         --border=rounded \
         --border-label='  ◈  BRANCHES  ' \
@@ -537,11 +546,13 @@ github_ui_branches() {
         --height=30%) || return
 
   case "${action##  }" in
+    "← back") github_ui; return ;;
     "🔀  Switch")
       local branch
-      branch=$(git branch --all --no-color \
+      branch=$(git branch --no-color \
         | grep -v 'HEAD' \
-        | sed 's|remotes/origin/||; s|^[* ]*||' \
+        | grep -v '^\*' \
+        | sed 's|^[* ]*||' \
         | sort -u \
         | fzf "${FZF_THEME[@]}" \
             --ansi \
@@ -552,12 +563,13 @@ github_ui_branches() {
             --preview-window=right:55% \
             --preview-label='  Log  ') || return
       git switch "$branch" 2>/dev/null || git checkout "$branch"
+      _GH_MSG=" ✅ Switched to $branch"
       ;;
     "🌱  Create")
       local name
       echo -n "  Branch name: " >/dev/tty
       read -r name </dev/tty || return
-      [[ -n "$name" ]] && git switch -c "$name" && echo "  ✅ Created and switched to $name"
+      [[ -n "$name" ]] && git switch -c "$name" && _GH_MSG="  ✅ Created and switched to $name"
       ;;
     "🗑   Delete")
       local branch
@@ -575,11 +587,11 @@ github_ui_branches() {
       read -r confirm </dev/tty || return
       if [[ "$confirm" == "y" ]]; then
         if git branch -d "$branch" 2>/dev/null; then
-          echo "  ✅ Deleted $branch"
+          _GH_MSG="  ✅ Deleted '$branch'"
         else
           echo -n "  ⚠️  Not fully merged. Force delete? (y/n): " >/dev/tty
           read -r force </dev/tty
-          [[ "$force" == "y" ]] && git branch -D "$branch" && echo "  ✅ Force deleted $branch"
+          [[ "$force" == "y" ]] && git branch -D "$branch" && _GH_MSG="  ✅ Force deleted '$branch'"
         fi
       fi
       ;;
@@ -643,6 +655,7 @@ github_ui_messages() {
   action=$(printf '%s\n' \
     "  🔔  Notifications" \
     "  💬  Discussions" \
+    "  ← back" \
     | fzf "${FZF_THEME[@]}" \
         --border=rounded \
         --border-label='  ◈  MESSAGES  ' \
@@ -650,6 +663,7 @@ github_ui_messages() {
         --height=25%) || return
 
   case "${action## }" in
+    "← back") github_ui; return ;;
     "🔔  Notifications")
       local notifications
       notifications=$(gh api notifications \
@@ -819,7 +833,11 @@ ${extra}"
 # ── keybind — Ctrl+G ─────────────────────────────────────────
 _github_ui_widget() {
   zle -I
-  { github_ui } always { zle reset-prompt }
+  _GH_MSG=""
+  { github_ui } always {
+    zle reset-prompt
+    [[ -n "$_GH_MSG" ]] && zle -M "$_GH_MSG"
+  }
 }
 zle -N _github_ui_widget
 bindkey '^G' _github_ui_widget
