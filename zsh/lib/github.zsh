@@ -443,6 +443,7 @@ github_ui_issues() {
         "  🌿  Start Branch" \
         "  🔀  Open PR" \
         "  📦  Stage & Commit" \
+        "  🫸  Push Commit" \
         "  🏷   Label" \
         "  ✅  Close" \
         "  💬  Comment" \
@@ -476,6 +477,7 @@ github_ui_issues() {
           ;;
         "🔀  Open PR")         github_ui_open_pr "$number" ;;
         "📦  Stage & Commit")  github_ui_staging ;;
+        "🫸  Push Commit")     github_ui_push_commit ;;
         "🏷   Label")
           local label
           label=$(gh label list --json name --jq '.[].name' 2>/dev/null \
