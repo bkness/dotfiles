@@ -414,8 +414,8 @@ github_ui_prs() {
       "🌿  Checkout")        gh pr checkout "$number" ;;
       "🔗  Open in browser") gh pr view "$number" --web ;;
       "👁   View")           gh pr view "$number" ;;
-      "✅  Merge")           _gh_confirm "Merge PR #$number?" && gh pr merge "$number" --squash ;;
-      "❌  Close")           _gh_confirm "Close PR #$number?" && gh pr close "$number" ;;
+      "✅  Merge")           _gh_confirm "Merge PR #$number?" && gh pr merge "$number" --squash && _GH_MSG="  ✅ Merged PR #$number" ;;
+      "❌  Close")           _gh_confirm "Close PR #$number?" && gh pr close "$number" && _GH_MSG="  ✅ Closed PR #$number" ;;
     esac
     return
   done
