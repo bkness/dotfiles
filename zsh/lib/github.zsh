@@ -34,6 +34,28 @@ _gh_confirm() {
   [[ "$reply" == "y" ]]
 }
 
+typeset -gA _GH_STALE_FETCH_DONE
+
+_gh_stale_warning() {
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return
+  local repo
+  repo=$(git rev-parse --show-toplevel 2>/dev/null)
+  if [[ -z "${_GH_STALE_FETCH_DONE[$repo]}" ]]; then
+    _GH_STALE_FETCH_DONE[$repo]=1
+    git fetch origin main --quiet 2>/dev/null &!
+  fi
+  local count
+  count=$(git log HEAD..origin/main --oneline 2>/dev/null | wc -l | tr -d ' ')
+  [[ "$count" -gt 0 ]] || return
+  local branch
+  branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  if [[ "$branch" == "main" || "$branch" == "master" ]]; then
+    echo "  ⚠️  main has $count unpulled commit(s) — run git pull"
+  else
+    echo "  ⚠️  main is $count commit(s) ahead — consider rebasing"
+  fi
+}
+
 _gh_repo_label() {
   git remote get-url origin 2>/dev/null \
     | sed 's|.*github\.com[/:]||; s/\.git$//' \
@@ -227,6 +249,8 @@ _gh_project_set_status() {
 # desc: Open GitHub dashboard with Ctrl+G
 github_ui() {
   _gh_check || return
+  local _stale_warn
+  _stale_warn=$(_gh_stale_warning)
 
   local git_options=()
   local gh_options=()
@@ -283,6 +307,7 @@ github_ui() {
     "📥  Clone Repo")      github_ui_clone ;;
     "🆕  Create Repo")     github_ui_new ;;
   esac
+  [[ -z "$_GH_MSG" && -n "$_stale_warn" ]] && _GH_MSG="$_stale_warn"
 }
 
 # ---------------------------------------
@@ -579,7 +604,9 @@ github_ui_branches() {
               --preview-label='  Log  ') || continue
         [[ "${branch##  }" == "← back" ]] && continue
         git switch "$branch" 2>/dev/null || git checkout "$branch"
-        _GH_MSG=" ✅ Switched to $branch"
+        local stale
+        stale=$(_gh_stale_warning)
+        _GH_MSG="  ✅ Switched to $branch${stale:+$'\n'$stale}"
         ;;
       "🌱  Create")
         local name
@@ -606,9 +633,15 @@ github_ui_branches() {
           if git branch -d "$branch" 2>/dev/null; then
             _GH_MSG="  ✅ Deleted '$branch'"
           else
-            echo -n "  ⚠️  Not fully merged. Force delete? (y/n): " >/dev/tty
-            read -r force </dev/tty
-            [[ "$force" == "y" ]] && git branch -D "$branch" && _GH_MSG="  ✅ Force deleted '$branch'"
+            local merged_pr
+            merged_pr=$(gh pr list --head "$branch" --state merged --json number --jq 'length' 2>/dev/null)
+            if [[ "$merged_pr" -gt 0 ]]; then
+              git branch -D "$branch" && _GH_MSG="  ✅ Deleted '$branch' (squash-merged)"
+            else
+              echo -n "  ⚠️  Not fully merged. Force delete? (y/n): " >/dev/tty
+              read -r force </dev/tty
+              [[ "$force" == "y" ]] && git branch -D "$branch" && _GH_MSG="  ✅ Force deleted '$branch'"
+            fi
           fi
         fi
         ;;
