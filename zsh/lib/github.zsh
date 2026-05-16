@@ -448,7 +448,7 @@ github_ui_issues() {
           git switch -c "$branch" && echo "  ✅ Switched to $branch"
           _gh_project_set_status "$number" "In Progress" &!
           ;;
-        "🔀  Open PR")         github_ui_open_pr ;;
+        "🔀  Open PR")         github_ui_open_pr "$number" ;;
         "🏷   Label")
           local label
           label=$(gh label list --json name --jq '.[].name' 2>/dev/null \
@@ -848,8 +848,7 @@ _github_create_issue() {
 github_ui_open_pr() {
   local branch
   branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-  local number
-  number=$(echo "$branch" | grep -oE '[0-9]+' | head -1)
+  local number="${1:-$(echo "$branch" | grep -oE '[0-9]+' | head -1)}"
 
   local body=""
   [[ -n "$number" ]] && body="Closes #${number}"
