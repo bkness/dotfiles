@@ -36,24 +36,37 @@ _gh_confirm() {
 
 _gh_stale_warning() {
   git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return
+
+  local default_branch
+  default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
+  if [[ -z "$default_branch" ]]; then
+    if git show-ref --verify --quiet refs/remotes/origin/main 2>/dev/null; then
+      default_branch=main
+    elif git show-ref --verify --quiet refs/remotes/origin/master 2>/dev/null; then
+      default_branch=master
+    fi
+  fi
+  [[ -z "$default_branch" ]] && return
+
   local git_dir
   git_dir=$(git rev-parse --git-dir 2>/dev/null)
-  local fetch_head="$git_dir/FETCH_HEAD"
   local last_fetch
-  last_fetch=$(stat -f %m "$fetch_head" 2>/dev/null)
+  last_fetch=$(stat -f %m "$git_dir/FETCH_HEAD" 2>/dev/null)
   last_fetch=${last_fetch:-0}
   if (( $(date +%s) - last_fetch > 300 )); then
-    git fetch origin main --quiet 2>/dev/null
+    git fetch origin "$default_branch" --quiet 2>/dev/null
   fi
+
   local count
-  count=$(git log HEAD..origin/main --oneline 2>/dev/null | wc -l | tr -d ' ')
+  count=$(git log HEAD..origin/"$default_branch" --oneline 2>/dev/null | wc -l | tr -d ' ')
   [[ "$count" -gt 0 ]] || return
+
   local branch
   branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
-  if [[ "$branch" == "main" || "$branch" == "master" ]]; then
-    echo "  ⚠️  main has $count unpulled commit(s) — run git pull"
+  if [[ "$branch" == "$default_branch" ]]; then
+    echo "  ⚠️  $default_branch has $count unpulled commit(s) — run git pull"
   else
-    echo "  ⚠️  main is $count commit(s) ahead — consider rebasing"
+    echo "  ⚠️  $default_branch is $count commit(s) ahead — consider rebasing"
   fi
 }
 
