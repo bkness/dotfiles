@@ -561,19 +561,27 @@ github_ui_branches() {
       ;;
     "🗑   Delete")
       local branch
-      branch=$(git branch --color=always \
+      branch=$(git branch \
         | grep -v '^\*' \
+        | sed 's/^[* ]*//' \
+        | grep -v '^\(main\|master\)$' \
         | fzf "${FZF_THEME[@]}" \
-            --ansi \
             --border=rounded \
             --border-label='  ◈  DELETE  ' \
             --prompt='  ❯ ' \
             --preview='git log --oneline --color=always {-1} | head -10' \
             --preview-window=right:55%) || return
-      local clean="${branch//\* /}"
-      echo -n "  Delete '$clean'? (y/n): " >/dev/tty
+      echo -n "  Delete '$branch'? (y/n): " >/dev/tty
       read -r confirm </dev/tty || return
-      [[ "$confirm" == "y" ]] && git branch -d "$clean" && echo "  ✅ Deleted $clean"
+      if [[ "$confirm" == "y" ]]; then
+        if git branch -d "$branch" 2>/dev/null; then
+          echo "  ✅ Deleted $branch"
+        else
+          echo -n "  ⚠️  Not fully merged. Force delete? (y/n): " >/dev/tty
+          read -r force </dev/tty
+          [[ "$force" == "y" ]] && git branch -D "$branch" && echo "  ✅ Force deleted $branch"
+        fi
+      fi
       ;;
   esac
 }
