@@ -115,6 +115,7 @@ _gh_ensure_labels() {
 # ---------------------------------------
 
 _FORGED_PROJECTS_CACHE="${XDG_CONFIG_HOME:-$HOME/.config}/forged/projects"
+_GH_PROJECT_ERR_LOG="${XDG_CACHE_HOME:-$HOME/.cache}/forged/project-errors.log"
 
 # Ensure the project scope is available — prompt once if not
 _gh_ensure_project_scope() {
@@ -206,14 +207,14 @@ _gh_project_set_status() {
   local board_status="$2"
 
   local project_id
-  project_id=$(_gh_get_or_create_project 2>/dev/tty) || return 0  # silent fail — don't block workflow
+  project_id=$(_gh_get_or_create_project 2>/dev/null) || return 1
 
   local repo
-  repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null) || return 0
+  repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null) || return 1
 
   # Get issue node ID
   local issue_node_id
-  issue_node_id=$(gh api "repos/${repo}/issues/${issue_number}" --jq '.node_id' 2>/dev/null) || return 0
+  issue_node_id=$(gh api "repos/${repo}/issues/${issue_number}" --jq '.node_id' 2>/dev/null) || return 1
 
   # Add item to project (idempotent)
   local item_id
@@ -222,7 +223,7 @@ _gh_project_set_status() {
       addProjectV2ItemById(input: { projectId: \"$project_id\", contentId: \"$issue_node_id\" }) {
         item { id }
       }
-    }" --jq '.data.addProjectV2ItemById.item.id' 2>/dev/null) || return 0
+    }" --jq '.data.addProjectV2ItemById.item.id' 2>/dev/null) || return 1
 
   # Find the Status field ID
   local field_id option_id
@@ -254,7 +255,7 @@ _gh_project_set_status() {
     | select(.name == $s)
     | .id' 2>/dev/null)
 
-  [[ -z "$field_id" || -z "$option_id" ]] && return 0
+  [[ -z "$field_id" || -z "$option_id" ]] && return 1
 
   # Set the status
   gh api graphql -f query="
@@ -266,6 +267,12 @@ _gh_project_set_status() {
         value: { singleSelectOptionId: \"$option_id\" }
       }) { projectV2Item { id } }
     }" --silent >/dev/null 2>&1
+}
+
+_gh_project_sync() {
+  mkdir -p "${_GH_PROJECT_ERR_LOG%/*}"
+  _gh_project_set_status "$@" \
+    || printf "%s  project sync failed: #%s → %s\n" "$(date +%H:%M)" "$1" "$2" >> "$_GH_PROJECT_ERR_LOG"
 }
 
 # ---------------------------------------
@@ -331,6 +338,10 @@ github_ui() {
     "📥  Clone Repo")      github_ui_clone ;;
     "🆕  Create Repo")     github_ui_new ;;
   esac
+  if [[ -z "$_GH_MSG" && -s "$_GH_PROJECT_ERR_LOG" ]]; then
+    _GH_MSG="  ⚠️  Project board sync failed — see $_GH_PROJECT_ERR_LOG"
+    : > "$_GH_PROJECT_ERR_LOG"
+  fi
 }
 
 # ---------------------------------------
@@ -496,7 +507,7 @@ github_ui_issues() {
           slug=$(echo "$issue_title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-40)
           local branch="${branch_type}/${number}-${slug}"
           git switch -c "$branch" && echo "  ✅ Switched to $branch"
-          _gh_project_set_status "$number" "In Progress" &!
+          _gh_project_sync "$number" "In Progress" &!
           ;;
         "🔀  Open PR")         github_ui_open_pr "$number" ;;
         "📦  Stage & Commit")  github_ui_staging ;;
@@ -888,7 +899,7 @@ _github_create_issue() {
   local number
   number=$(echo "$url" | grep -oE '[0-9]+$')
   echo "  ✅ Issue #$number created"
-  _gh_project_set_status "$number" "Todo" &!
+  _gh_project_sync "$number" "Todo" &!
 
   # Offer to create a branch tied to the issue
   local branch_type
@@ -905,7 +916,7 @@ _github_create_issue() {
   slug=$(echo "$title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-40)
   local branch="${branch_type}/${number}-${slug}"
   git switch -c "$branch" && echo "  ✅ Switched to $branch"
-  _gh_project_set_status "$number" "In Progress" &!
+  _gh_project_sync "$number" "In Progress" &!
 }
 
 # ── open PR with auto Closes #NNN from branch name ───────────
@@ -929,7 +940,7 @@ ${extra}"
   git push origin HEAD 2>/dev/null || git push --set-upstream origin HEAD
   gh pr create --title "$title" --body "$body" \
     && echo "  ✅ PR created${number:+ — will close #$number on merge}"
-  [[ -n "$number" ]] && _gh_project_set_status "$number" "In Review" &!
+  [[ -n "$number" ]] && _gh_project_sync "$number" "In Review" &!
 }
 
 # ── keybind — Ctrl+G ─────────────────────────────────────────
