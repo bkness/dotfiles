@@ -337,8 +337,6 @@ tell application "iTerm2"
 end tell
 ITERM
 
-   sleep 2
-
   # Lights on - server should be ready
   _govee_boot "H6008" "$GOVEE_OFFICE"
   _govee_boot "H610A" "$GOVEE_MAIN"
@@ -365,24 +363,26 @@ tell application "System Events"
 end tell
 VSCODE
 
-  # Launch Chrome, kill its auto-opened window, then place all 4 windows
-  osascript <<'CHROME'
+# Launch Chrome with no window, wait until it's up, then place windows
+osascript <<'CHROME'
 tell application "Google Chrome"
   activate
-  delay 1
+  if (count of windows) is 0 then
+    make new window
+  end if
   close every window
-  set w to make new window
-  set bounds of w to {2561, 0, 3520, 1080}
-  set URL of active tab of w to "https://github.com/bkness"
-  set w to make new window
-  set bounds of w to {3520, 0, 4480, 1080}
-  set URL of active tab of w to "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array"
-  set w to make new window
-  set bounds of w to {4485, 77, 5322, 1123}
-  set URL of active tab of w to "https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started"
-  set w to make new window
-  set bounds of w to {5322, 77, 6160, 1123}
-  set URL of active tab of w to "https://www.youtube.com"
+  set w1 to make new window
+  set bounds of w1 to {2561, 0, 3520, 1080}
+  set URL of active tab of w1 to "https://github.com/bkness"
+  set w2 to make new window
+  set bounds of w2 to {3520, 0, 4480, 1080}
+  set URL of active tab of w2 to "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array"
+  set w3 to make new window
+  set bounds of w3 to {4485, 77, 5322, 1123}
+  set URL of active tab of w3 to "https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started"
+  set w4 to make new window
+  set bounds of w4 to {5322, 77, 6160, 1123}
+  set URL of active tab of w4 to "https://www.youtube.com"
 end tell
 CHROME
 
