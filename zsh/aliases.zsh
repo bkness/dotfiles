@@ -304,8 +304,11 @@ alias coord="cliclick p"
 alias goveestat='curl -s http://localhost:8000/lights/ -H "x-api-key: $GOVEE_SERVER_KEY" | python3 -m json.tool'
 
 pyserv() {
-  (cd ~/dev/projects/govee-automation && source .venv/bin/activate && uvicorn app.main:app --reload) >/dev/null &!
+  local log="/tmp/govee-server.log"
+  (cd ~/dev/projects/govee-automation && source .venv/bin/activate && uvicorn app.main:app --reload) > "$log" 2>&1 &!
   echo "🟢 govee server starting..."
+  sleep 1.5
+  grep -m1 "Uvicorn running" "$log" 2>/dev/null | sed 's/^INFO:     //' || echo "   http://localhost:8000"
 }
 
 killpy() { 
