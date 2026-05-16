@@ -187,24 +187,17 @@ _gh_project_set_status() {
       }
     }" 2>/dev/null)
 
-  field_id=$(echo "$fields_json" | python3 -c "
-import json,sys
-data=json.load(sys.stdin)
-for f in data['data']['node']['fields']['nodes']:
-    if f.get('name') == 'Status':
-        print(f['id']); break
-" 2>/dev/null)
+  field_id=$(echo "$fields_json" | jq -r '
+    .data.node.fields.nodes[]
+    | select(.name == "Status")
+    | .id' 2>/dev/null)
 
-  option_id=$(echo "$fields_json" | python3 -c "
-import json,sys
-data=json.load(sys.stdin)
-board_status='$board_status'
-for f in data['data']['node']['fields']['nodes']:
-    if f.get('name') == 'Status':
-        for o in f.get('options',[]):
-            if o['name'] == board_status:
-                print(o['id']); break
-" 2>/dev/null)
+  option_id=$(echo "$fields_json" | jq -r --arg s "$board_status" '
+    .data.node.fields.nodes[]
+    | select(.name == "Status")
+    | .options[]
+    | select(.name == $s)
+    | .id' 2>/dev/null)
 
   [[ -z "$field_id" || -z "$option_id" ]] && return 0
 
