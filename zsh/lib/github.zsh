@@ -913,6 +913,7 @@ github_ui_open_pr() {
 
 ${extra}"
 
+  _gh_confirm "Push $branch to origin?" || return
   git push origin HEAD 2>/dev/null || git push --set-upstream origin HEAD
   gh pr create --title "$title" --body "$body" \
     && echo "  ✅ PR created${number:+ — will close #$number on merge}"
