@@ -76,8 +76,14 @@ _gh_repo_label() {
     || echo "Global"
 }
 
-# Ensure standard labels exist on the repo — runs once then exits fast
+typeset -gA _GH_LABELS_DONE
+
+# Ensure standard labels exist on the repo — runs once per repo per session
 _gh_ensure_labels() {
+  local repo
+  repo=$(git rev-parse --show-toplevel 2>/dev/null)
+  [[ -n "${_GH_LABELS_DONE[$repo]}" ]] && return
+  _GH_LABELS_DONE[$repo]=1
   local existing
   existing=$(gh label list --json name --jq '.[].name' 2>/dev/null)
   local -A labels=(
