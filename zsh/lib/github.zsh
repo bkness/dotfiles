@@ -269,8 +269,6 @@ _gh_project_set_status() {
 # desc: Open GitHub dashboard with Ctrl+G
 github_ui() {
   _gh_check || return
-  local _stale_warn
-  _stale_warn=$(_gh_stale_warning)
 
   local git_options=()
   local gh_options=()
@@ -327,7 +325,6 @@ github_ui() {
     "📥  Clone Repo")      github_ui_clone ;;
     "🆕  Create Repo")     github_ui_new ;;
   esac
-  [[ -z "$_GH_MSG" && -n "$_stale_warn" ]] && _GH_MSG="$_stale_warn"
 }
 
 # ---------------------------------------
