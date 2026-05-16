@@ -526,9 +526,9 @@ github_ui_sync_fork() {
 }
 
 github_ui_status() {
-  echo "\033[32m=== Repo ===\033[0m" && gh repo view
-  echo "\n\033[32m=== Open PRs ===\033[0m" && gh pr list --limit 5 || echo "None"
-  echo "\n\033[32m=== Open Issues ===\033[0m" && gh issue list --limit 5 || echo "None"
+  print "\033[32m=== Repo ===\033[0m" && gh repo view
+  print "\n\033[32m=== Open PRs ===\033[0m" && gh pr list --limit 5 || print "None"
+  print "\n\033[32m=== Open Issues ===\033[0m" && gh issue list --limit 5 || print "None"
 }
 
 # ── branches ─────────────────────────────────────────────────
