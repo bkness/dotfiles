@@ -34,18 +34,24 @@ _gh_confirm() {
   [[ "$reply" == "y" ]]
 }
 
+_gh_default_branch() {
+  local branch
+  branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
+  if [[ -z "$branch" ]]; then
+    if git show-ref --verify --quiet refs/remotes/origin/main 2>/dev/null; then
+      branch=main
+    elif git show-ref --verify --quiet refs/remotes/origin/master 2>/dev/null; then
+      branch=master
+    fi
+  fi
+  echo "$branch"
+}
+
 _gh_stale_warning() {
   git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return
 
   local default_branch
-  default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
-  if [[ -z "$default_branch" ]]; then
-    if git show-ref --verify --quiet refs/remotes/origin/main 2>/dev/null; then
-      default_branch=main
-    elif git show-ref --verify --quiet refs/remotes/origin/master 2>/dev/null; then
-      default_branch=master
-    fi
-  fi
+  default_branch=$(_gh_default_branch)
   [[ -z "$default_branch" ]] && return
 
   local git_dir
@@ -636,11 +642,14 @@ github_ui_branches() {
         [[ -n "$name" ]] && git switch -c "$name" && _GH_MSG="  ✅ Created and switched to $name"
         ;;
       "🗑   Delete")
+        local default_branch
+        default_branch=$(_gh_default_branch)
+        default_branch=${default_branch:-main}
         local branch
         branch=$({ printf '%s\n' "  ← back"; git branch \
           | grep -v '^\*' \
           | sed 's/^[* ]*//' \
-          | grep -v '^\(main\|master\)$'; } \
+          | grep -v "^${default_branch}$"; } \
           | fzf "${FZF_THEME[@]}" \
               --border=rounded \
               --border-label='  ◈  DELETE  ' \
