@@ -364,7 +364,7 @@ github_ui_repos() {
     "← back") github_ui; return ;;
     "🔗  Open in browser") gh repo view "$name" --web ;;
     "📥  Clone")
-      local dest="$DEV_ROOT/$(basename $name)"
+      local dest="$DEV_ROOT/$(basename "$name")"
       gh repo clone "$name" "$dest" \
         && cd "$dest" && add-recent && refresh-dev-cache
       ;;
@@ -570,7 +570,7 @@ github_ui_clone() {
 
   local name dest
   name=$(echo "$selected" | awk '{print $1}')
-  dest="$DEV_ROOT/$(basename $name)"
+  dest="$DEV_ROOT/$(basename "$name")"
 
   gh repo clone "$name" "$dest" \
     && cd "$dest" && add-recent && refresh-dev-cache \
