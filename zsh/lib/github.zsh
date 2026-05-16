@@ -442,6 +442,7 @@ github_ui_issues() {
         "  👁   View" \
         "  🌿  Start Branch" \
         "  🔀  Open PR" \
+        "  📦  Stage & Commit" \
         "  🏷   Label" \
         "  ✅  Close" \
         "  💬  Comment" \
@@ -474,6 +475,7 @@ github_ui_issues() {
           _gh_project_set_status "$number" "In Progress" &!
           ;;
         "🔀  Open PR")         github_ui_open_pr "$number" ;;
+        "📦  Stage & Commit")  github_ui_staging ;;
         "🏷   Label")
           local label
           label=$(gh label list --json name --jq '.[].name' 2>/dev/null \
@@ -677,7 +679,7 @@ github_ui_staging() {
     git add "$file" && echo "  ● Staged: $file"
   done
 
-  echo -n "\n  Commit message (blank to skip): " >/dev/tty
+  printf "\n  Commit message (blank to skip): " >/dev/tty
   read -r msg </dev/tty || return
   [[ -n "$msg" ]] && git commit -m "$msg" && echo "  ✅ Committed: $msg"
 }
