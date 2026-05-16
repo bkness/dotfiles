@@ -763,8 +763,8 @@ github_ui_messages() {
               --border=rounded \
               --border-label='  ◈  NOTIFICATIONS  ' \
               --prompt='  ❯ ' \
-              --preview='echo {}' \
-              --preview-window=down:3:wrap) || continue
+              --preview='echo {} | awk "{t=\$2; r=\$3; ttl=\"\"; for(i=4;i<=NF;i++) ttl=ttl(i>4?\" \":\"\") \$i; printf \"  %-8s %s\n  %-8s %s\n  %-8s %s\n\", \"Type:\", t, \"Repo:\", r, \"Title:\", ttl}"' \
+              --preview-window=down:4:wrap) || continue
         [[ "${selected##  }" == "← back" ]] && continue
         local notif_id api_url web_url
         notif_id=$(echo "$selected" | awk '{print $1}')
