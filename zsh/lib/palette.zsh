@@ -285,7 +285,7 @@ PREVIEW
           --preview-window=right:50%:wrap \
           --preview-label='  Info  '
     ) || { rm -f "$_pal_tmp" "$_cats_tmp" "$_idx_tmp" "$_cycle_script" "$_filter_script" \
-      "$_header_script" "$_preview_script"; return; }
+      "$_header_script" "$_preview_script"; zle reset-prompt; return; }
 
     rm -f "$_pal_tmp" "$_cats_tmp" "$_idx_tmp" "$_cycle_script" "$_filter_script" \
       "$_header_script" "$_preview_script"
@@ -294,7 +294,7 @@ PREVIEW
   cmd=$(echo "$selected" | awk -F'│' '{print $1}' | sed 's/^[[:space:]]*[^ ]* *//' | xargs)
   category=$(echo "$selected" | awk -F'│' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2}')
 
-  [[ -z "$cmd" ]] && return
+  [[ -z "$cmd" ]] && { zle reset-prompt; return; }
 
   if [[ "$category" == "widget" ]]; then
     zle "$cmd"
