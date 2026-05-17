@@ -83,7 +83,7 @@ _music_now_playing() {
 }
 
 music_ui() {
-  # One combined call — state + loved status
+  # One combined call — state + loved status (nested try so loved failure won't wipe name/artist)
   local raw_state
   raw_state=$(osascript \
     -e 'tell application "Music"' \
@@ -91,7 +91,10 @@ music_ui() {
     -e '  try' \
     -e '    set n to name of current track' \
     -e '    set ar to artist of current track' \
-    -e '    set lv to loved of current track as string' \
+    -e '    set lv to "false"' \
+    -e '    try' \
+    -e '      set lv to loved of current track as string' \
+    -e '    end try' \
     -e '    return s & "|" & n & "|" & ar & "|" & lv' \
     -e '  on error' \
     -e '    return s & "|||false"' \
@@ -122,7 +125,10 @@ raw=$(osascript \
   -e '    set al to album of current track' \
   -e '    set d to duration of current track as integer' \
   -e '    set p to player position as integer' \
-  -e '    set lv to loved of current track as string' \
+  -e '    set lv to "false"' \
+  -e '    try' \
+  -e '      set lv to loved of current track as string' \
+  -e '    end try' \
   -e '    return s & "|" & n & "|" & ar & "|" & al & "|" & d & "|" & p & "|" & lv' \
   -e '  on error' \
   -e '    return s' \
