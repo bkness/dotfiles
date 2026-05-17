@@ -1,7 +1,9 @@
 # ---------------------------------------
 # Apple Music Widget — ♫
-# Alt+M to open | catalog search via Apple Music API + playback controls + stations
-# Note: ^M = Enter (reserved) — use ^[m (Alt+M) instead
+# Ctrl+] to open | catalog search via Apple Music API + playback controls + stations
+# Keybinding note: Alt/Option keybinds don't work on macOS terminals — they produce
+# special characters (˙∆˚¬µ etc) instead of escape sequences. Stick to Ctrl+<key>.
+# ^M = Enter (reserved), ^A = beginning-of-line (reserved). ^] is free and safe.
 # Requires: APPLE_MUSIC_KEY_ID, APPLE_MUSIC_TEAM_ID, APPLE_MUSIC_KEY_PATH in ~/.secrets
 # ---------------------------------------
 
@@ -303,4 +305,4 @@ _music_widget() {
   }
 }
 zle -N _music_widget
-bindkey '^[m' _music_widget
+bindkey '^]' _music_widget
