@@ -81,4 +81,4 @@ _explorer_widget() {
 }
 
 zle -N _explorer_widget
-bindkey '^E' _explorer_widget
+bindkey '^Q' _explorer_widget
