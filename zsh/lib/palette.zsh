@@ -42,16 +42,42 @@ _palette_entries() {
   _palette_row "forged init" "forged" "Bootstrap dev environment"
 
   # --- Git ---
-  _palette_row "cb" "git" "Create and switch to new branch"
-  _palette_row "cm" "git" "Switch to main or master"
-  _palette_row "gbr" "git" "Fuzzy switch any branch"
   _palette_row "gs" "git" "git status"
+  _palette_row "gc" "git" "git commit"
+  _palette_row "gca" "git" "Stage all + commit with message"
   _palette_row "gp" "git" "git push"
   _palette_row "gpl" "git" "git pull"
   _palette_row "gl" "git" "git log (graph)"
+  _palette_row "gb" "git" "List / create / delete branches"
+  _palette_row "gco" "git" "git checkout"
+  _palette_row "gss" "git" "git switch"
+  _palette_row "gr" "git" "git restore"
+  _palette_row "gst" "git" "git stash"
+  _palette_row "gstp" "git" "git stash pop"
+  _palette_row "cb" "git" "Create and switch to new branch"
+  _palette_row "cm" "git" "Switch to main or master"
+  _palette_row "gbr" "git" "Fuzzy switch any branch"
+  _palette_row "nukebranches" "git" "Delete all remote branches except main/master"
 
   # --- GitHub ---
   _palette_row "ghui" "github" "GitHub dashboard (PRs, issues, repos, branches…)"
+
+  # --- Music ---
+  _palette_row "music" "music" "Open Music app"
+  _palette_row "mplay" "music" "Toggle play/pause"
+  _palette_row "mnext" "music" "Next track"
+  _palette_row "mprev" "music" "Previous track"
+  _palette_row "mymusic" "music" "Brandon's station"
+  _palette_row "omens" "music" "Bad Omens station"
+  _palette_row "prevail" "music" "I Prevail station"
+  _palette_row "horizon" "music" "Bring Me the Horizon station"
+
+  # --- Dotfiles / editor ---
+  _palette_row "vima" "edit" "Edit aliases.zsh"
+  _palette_row "vimz" "edit" "Open dotfiles dir in vim"
+  _palette_row "vimj" "edit" "Open projects dir in vim"
+  _palette_row "editstarship" "edit" "Edit starship.toml"
+  _palette_row "vsfont" "edit" "Edit VS Code font settings"
 
   # --- Dev utilities ---
   _palette_row "killport" "util" "Kill process on a port"
@@ -62,6 +88,18 @@ _palette_entries() {
   _palette_row "j" "util" "Jump anywhere (zoxide)"
   _palette_row "fcd" "util" "Fuzzy cd with file preview (fd + fzf)"
   _palette_row "refresh-dev-cache" "util" "Rebuild project cache"
+  _palette_row "cl" "util" "Resume last Claude Code session"
+  _palette_row "ss" "util" "Interactive screenshot to Desktop"
+  _palette_row "sandbox" "util" "Open JS sandbox"
+  _palette_row "chrome" "util" "Open Google Chrome"
+  _palette_row "bk" "util" "Open my GitHub profile"
+  _palette_row "wat" "util" "Open WebAllTech site"
+  _palette_row "apistat" "util" "Open WebAllTech API status"
+  _palette_row "pixel" "util" "Show display resolution info"
+  _palette_row "monpos" "util" "Show monitor position info"
+  _palette_row "coord" "util" "Get click coordinates"
+  _palette_row "c" "util" "Clear terminal"
+  _palette_row ".." "util" "Up one directory"
 
   # --- Shell introspection ---
   _palette_row "vared PLUGIN_REGISTRY" "debug" "Inspect plugin registry"
