@@ -244,12 +244,12 @@ FILTER
         --border-label='  ■  COMMAND PALETTE  ' \
         --color=label:#00ff00 \
         --prompt='  ❯ ' \
-        --header='  Ctrl+P — browse  │  Alt+F — filter  │  Ctrl+X — reset' \
+        --header='  Ctrl+P — browse  │  Ctrl+F — filter  │  Ctrl+X — reset' \
         --header-first \
         --with-nth=1 \
         --delimiter='│' \
-        --bind "alt-f:execute(zsh '$_pick_script')+reload(zsh '$_filter_script')+change-header(  ■ PALETTE — filtered  │  Ctrl+X — reset all)" \
-        --bind "ctrl-x:execute(printf '' > '$_cat_tmp')+reload(cat '$_pal_tmp')+change-header(  Ctrl+P — browse  │  Alt+F — filter  │  Ctrl+X — reset)" \
+        --bind "ctrl-f:execute(zsh '$_pick_script')+reload(zsh '$_filter_script')+change-header(  ■ PALETTE — filtered  │  Ctrl+X — reset all)" \
+        --bind "ctrl-x:execute(printf '' > '$_cat_tmp')+reload(cat '$_pal_tmp')+change-header(  Ctrl+P — browse  │  Ctrl+F — filter  │  Ctrl+X — reset)" \
         --preview='
           cmd=$(echo {} | awk -F"│" "{print \$1}" | sed "s/^[[:space:]]*[^ ]* *//" | xargs)
           cat=$(echo {} | awk -F"│" "{print \$2}" | xargs)
