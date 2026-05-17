@@ -134,9 +134,9 @@ _gh_get_or_create_project() {
   mkdir -p "${_FORGED_PROJECTS_CACHE%/*}"
   touch "$_FORGED_PROJECTS_CACHE"
 
-  # Return cached ID if present
+  # Return cached ID if present (head -1 guards against duplicate entries from async writes)
   local cached
-  cached=$(grep "^${repo}=" "$_FORGED_PROJECTS_CACHE" 2>/dev/null | cut -d= -f2)
+  cached=$(grep "^${repo}=" "$_FORGED_PROJECTS_CACHE" 2>/dev/null | cut -d= -f2 | head -1)
   [[ -n "$cached" ]] && echo "$cached" && return 0
 
   _gh_ensure_project_scope \
@@ -163,7 +163,8 @@ _gh_get_or_create_project() {
     }" --jq ".data.repositoryOwner.projectsV2.nodes[] | select(.title == \"$repo_name\") | .id" 2>/dev/null | head -1)
 
   if [[ -n "$existing_id" ]]; then
-    echo "${repo}=${existing_id}" >> "$_FORGED_PROJECTS_CACHE"
+    grep -qx "${repo}=${existing_id}" "$_FORGED_PROJECTS_CACHE" 2>/dev/null \
+      || echo "${repo}=${existing_id}" >> "$_FORGED_PROJECTS_CACHE"
     echo "$existing_id"
     return 0
   fi
@@ -196,7 +197,8 @@ _gh_get_or_create_project() {
       }" >/dev/null 2>&1
   fi
 
-  echo "${repo}=${new_id}" >> "$_FORGED_PROJECTS_CACHE"
+  grep -qx "${repo}=${new_id}" "$_FORGED_PROJECTS_CACHE" 2>/dev/null \
+    || echo "${repo}=${new_id}" >> "$_FORGED_PROJECTS_CACHE"
   echo "  ✅ Created project board \"$repo_name\"" >&2
   echo "$new_id"
 }
