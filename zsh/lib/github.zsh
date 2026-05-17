@@ -882,7 +882,7 @@ _github_create_issue() {
       local _raw
       _raw=$(gh api "repos/${_repo}/contents/ISSUE_TEMPLATE/${_tpl}" --jq '.content' | base64 -d)
       # Strip YAML frontmatter (everything between the two --- markers)
-      template_body=$(echo "$_raw" | awk 'BEGIN{f=0} /^---/{f++; next} f<2{next} {print}')
+      template_body=$(echo "$_raw" | awk '/^---/{f++; next} f==1{next} {print}')
       # Pull the label out of frontmatter so we can pre-query the label picker
       frontmatter_label=$(echo "$_raw" | awk '/^---/{f++; next} f==1 && /^labels:/{sub(/^labels:[[:space:]]*/, ""); print; exit}')
     fi
