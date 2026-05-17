@@ -72,6 +72,7 @@ _palette_entries() {
   _palette_row "_github_ui_widget" "widget" "GitHub dashboard (Ctrl+G)"
 
   # --- Music ---
+  _palette_row "_music_widget" "widget" "Music controls + catalog search (Ctrl+])"
   _palette_row "music" "music" "Open Music app"
   _palette_row "mplay" "music" "Toggle play/pause"
   _palette_row "mnext" "music" "Next track"
