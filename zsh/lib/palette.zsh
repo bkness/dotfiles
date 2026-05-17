@@ -119,61 +119,11 @@ fmt_palette_tune() {
   printf "%-${width_cmd}.${width_cmd}s │ %-${width_cat}.${width_cat}s │ %s\n" "Command" "Category" "Description"
   printf "%s-┼-%s-┼-%s\n" "$cmd_rule" "$cat_rule" "------------------------------"
 
-  # Print every static entry through the chosen widths
-  local entries=(
-    "dev:cmd:Open project picker"
-    "p:cmd:Fuzzy pick any project"
-    "pr:cmd:Pick project + open in editor"
-    "newproj:cmd:Create a new project"
-    "quick_edit_readme:cmd:Edit README in current project"
-    "_explorer_widget:cmd:Browse files"
-    "reload:shell:Restart shell"
-    "sz:shell:Soft reload"
-    "safe:shell:Clean shell session"
-    "bye:shell:Clean exit"
-    "online:status:Manually set online"
-    "offline:status:Manually set offline"
-    "forged gen pass:forged:Generate secure password"
-    "forged gen secret:forged:Generate 32-byte hex secret"
-    "forged gen pin:forged:Generate 6-digit PIN"
-    "forged gen uuid:forged:Generate UUID v4"
-    "scan:forged:Scan deps"
-    "scan-repos:forged:Batch scan multiple repos"
-    "forged readme:forged:Interactive README generator"
-    "forged init:forged:Bootstrap dev environment"
-    "cb:git:Create and switch to new branch"
-    "cm:git:Switch to main or master"
-    "gbr:git:Fuzzy switch any branch"
-    "gs:git:git status"
-    "gp:git:git push"
-    "gpl:git:git pull"
-    "gl:git:git log (graph)"
-    "ghui:github:GitHub dashboard"
-    "github_ui_prs:github:Pull requests"
-    "github_ui_issues:github:Issues"
-    "github_ui_repos:github:My repos"
-    "github_ui_clone:github:Clone a repo"
-    "github_ui_new:github:Create new repo"
-    "killport:util:Kill process on a port"
-    "serve:util:Start local HTTP server"
-    "ports:util:Show all listening ports"
-    "envload:util:Load .env into current shell"
-    "take:util:mkdir + cd in one step"
-    "j:util:Jump anywhere (zoxide)"
-    "fcd:util:Fuzzy cd with file preview"
-    "refresh-dev-cache:util:Rebuild project cache"
-    "vared PLUGIN_REGISTRY:debug:Inspect plugin registry"
-    "vared _HOOKS:debug:Inspect hook registry"
-    "zprof:debug:Profile shell startup"
-    "fmt_demo:debug:Show printf width examples"
-    "fmt_palette_tune:debug:Preview real palette rows at custom widths"
-  )
-
-  for entry in "${entries[@]}"; do
-    local cmd="${entry%%:*}"
-    local rest="${entry#*:}"
-    local cat="${rest%%:*}"
-    local desc="${rest#*:}"
+  _palette_entries | while IFS= read -r line; do
+    local cmd cat desc
+    cmd=$(echo "$line" | awk -F'│' '{print $1}' | sed 's/^[[:space:]]*[^ ]* *//' | xargs)
+    cat=$(echo "$line" | awk -F'│' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2}')
+    desc=$(echo "$line" | awk -F'│' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $3); print $3}')
     printf "%-${width_cmd}.${width_cmd}s │ %-${width_cat}.${width_cat}s │ %s\n" "$cmd" "$cat" "$desc"
   done
 
