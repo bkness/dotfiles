@@ -261,7 +261,30 @@ else
 fi
 HEADER
 
-  local _cleanup="_pal_tmp _cats_tmp _idx_tmp _cycle_script _filter_script _header_script"
+  local _preview_script
+  _preview_script=$(mktemp /tmp/.palette-preview-XXXX.sh)
+
+  # Written with quoted heredoc so awk -F'│' stays single-quoted and parses correctly
+  cat > "$_preview_script" <<'PREVIEW'
+#!/bin/zsh
+line="$1"
+cmd=$(echo "$line" | awk -F'│' '{print $1}' | sed 's/^[[:space:]]*[^ ]* *//' | xargs)
+cat=$(echo "$line" | awk -F'│' '{print $2}' | xargs)
+desc=$(echo "$line" | awk -F'│' '{print $3}' | xargs)
+printf "\033[32mCommand:\033[0m  %s\n" "$cmd"
+printf "\033[32mCategory:\033[0m %s\n" "$cat"
+printf "\033[32mInfo:\033[0m     %s\n\n" "$desc"
+if typeset -f "$cmd" >/dev/null 2>&1; then
+  printf "\033[32mSource:\033[0m\n"
+  typeset -f "$cmd" 2>/dev/null | head -25
+elif alias "$cmd" >/dev/null 2>&1; then
+  printf "\033[32mAlias:\033[0m  %s\n" "$(alias "$cmd")"
+else
+  base="${cmd%% *}"
+  type_info=$(type "$base" 2>/dev/null)
+  [[ -n "$type_info" && "$type_info" != *"not found"* ]] && printf "\033[32mType:\033[0m   %s\n" "$type_info"
+fi
+PREVIEW
 
   selected=$(
     cat "$_pal_tmp" \
@@ -276,29 +299,12 @@ HEADER
         --delimiter='│' \
         --bind "ctrl-f:execute-silent(zsh '$_cycle_script')+reload(zsh '$_filter_script')+transform-header(zsh '$_header_script')" \
         --bind "ctrl-x:execute-silent(echo 0 > '$_idx_tmp')+reload(cat '$_pal_tmp')+change-header(  Ctrl+P — browse  │  Ctrl+F — filter  │  Ctrl+X — reset)" \
-        --preview='
-          cmd=$(echo {} | awk -F"│" "{print \$1}" | sed "s/^[[:space:]]*[^ ]* *//" | xargs)
-          cat=$(echo {} | awk -F"│" "{print \$2}" | xargs)
-          desc=$(echo {} | awk -F"│" "{print \$3}" | xargs)
-          printf "\033[32mCommand:\033[0m  %s\n" "$cmd"
-          printf "\033[32mCategory:\033[0m %s\n" "$cat"
-          printf "\033[32mInfo:\033[0m     %s\n\n" "$desc"
-          if typeset -f "$cmd" >/dev/null 2>&1; then
-            printf "\033[32mSource:\033[0m\n"
-            typeset -f "$cmd" 2>/dev/null | head -25
-          elif alias "$cmd" >/dev/null 2>&1; then
-            printf "\033[32mAlias:\033[0m  %s\n" "$(alias "$cmd")"
-          else
-            base="${cmd%% *}"
-            type_info=$(type "$base" 2>/dev/null)
-            [[ -n "$type_info" && "$type_info" != *"not found"* ]] && printf "\033[32mType:\033[0m   %s\n" "$type_info"
-          fi
-        ' \
+        --preview="zsh '$_preview_script' {}" \
         --preview-window=right:50%:wrap \
         --preview-label='  Info  '
-  ) || { rm -f "$_pal_tmp" "$_cats_tmp" "$_idx_tmp" "$_cycle_script" "$_filter_script" "$_header_script"; return; }
+  ) || { rm -f "$_pal_tmp" "$_cats_tmp" "$_idx_tmp" "$_cycle_script" "$_filter_script" "$_header_script" "$_preview_script"; return; }
 
-  rm -f "$_pal_tmp" "$_cats_tmp" "$_idx_tmp" "$_cycle_script" "$_filter_script" "$_header_script"
+  rm -f "$_pal_tmp" "$_cats_tmp" "$_idx_tmp" "$_cycle_script" "$_filter_script" "$_header_script" "$_preview_script"
 
   local cmd category
   cmd=$(echo "$selected" | awk -F'│' '{print $1}' | sed 's/^[[:space:]]*[^ ]* *//' | xargs)
