@@ -67,7 +67,7 @@ _palette_entries() {
   _palette_row "goveestat" "govee" "Show all light states via local API"
 
   # --- GitHub ---
-  _palette_row "ghui" "github" "GitHub dashboard (PRs, issues, repos, branches…)"
+  _palette_row "_github_ui_widget" "widget" "GitHub dashboard (Ctrl+G)"
 
   # --- Music ---
   _palette_row "music" "music" "Open Music app"
