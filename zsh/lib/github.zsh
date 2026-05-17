@@ -524,9 +524,14 @@ github_ui_issues() {
           ;;
         "✅  Close")           _gh_confirm "Close issue #$number?" && gh issue close "$number" && _GH_MSG="  ✅ Closed issue #$number" ;;
         "💬  Comment")
-          local body
-          read "body?Comment: "
-          [[ -n "$body" ]] && gh issue comment "$number" --body "$body"
+          local tmp_comment body
+          tmp_comment=$(mktemp /tmp/gh-issue-comment-XXXX.md)
+          local _ed="${EDITOR:-nano}"
+          [[ "$_ed" == *code* ]] && _ed="$_ed --wait"
+          ${=_ed} "$tmp_comment" </dev/tty >/dev/tty
+          body=$(awk 'NF{found=NR} {lines[NR]=$0} END{for(i=1;i<=found;i++) print lines[i]}' "$tmp_comment")
+          rm -f "$tmp_comment"
+          [[ -n "$body" ]] && gh issue comment "$number" --body "$body" && _GH_MSG="  ✅ Comment posted on #$number"
           ;;
       esac
       return
@@ -730,7 +735,7 @@ github_ui_staging() {
   [[ "$_ed" == *code* ]] && _ed="$_ed --wait"
   ${=_ed} "$tmp_body" </dev/tty >/dev/tty
   local body
-  body=$(grep -v '^\s*#' "$tmp_body" | awk 'NF{found=NR} {lines[NR]=$0} END{for(i=1;i<=found;i++) print lines[i]}')
+  body=$(awk 'NF{found=NR} {lines[NR]=$0} END{for(i=1;i<=found;i++) print lines[i]}' "$tmp_body")
   rm -f "$tmp_body"
 
   if [[ -n "$body" ]]; then
