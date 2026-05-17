@@ -1,5 +1,6 @@
 # ---------------------------------------
 # Ctrl+P Command Palette
+# Ctrl+F to Filter Ctrl+X to delte cache
 # Reads live from PLUGIN_REGISTRY and _HOOKS
 # ---------------------------------------
 
