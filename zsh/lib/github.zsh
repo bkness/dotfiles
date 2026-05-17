@@ -959,20 +959,21 @@ github_ui_open_pr() {
   branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
   local number="${1:-$(echo "$branch" | grep -oE '[0-9]+' | head -1)}"
 
-  local body=""
-  [[ -n "$number" ]] && body="Closes #${number}"
-
   echo -n "  PR title (blank = branch name): " >/dev/tty; read -r title </dev/tty
   [[ -z "$title" ]] && title="$branch"
 
-  echo -n "  Additional body (blank to skip): " >/dev/tty; read -r extra </dev/tty
-  [[ -n "$extra" ]] && body="${body}
-
-${extra}"
+  local tmp_pr_body body
+  tmp_pr_body=$(mktemp /tmp/gh-pr-body-XXXX.md)
+  [[ -n "$number" ]] && printf "Closes #%s\n\n" "$number" > "$tmp_pr_body"
+  local _ed="${EDITOR:-nano}"
+  [[ "$_ed" == *code* ]] && _ed="$_ed --wait"
+  ${=_ed} "$tmp_pr_body" </dev/tty >/dev/tty
+  body=$(awk 'NF{found=NR} {lines[NR]=$0} END{for(i=1;i<=found;i++) print lines[i]}' "$tmp_pr_body")
+  rm -f "$tmp_pr_body"
 
   _gh_confirm "Push $branch to origin?" || return
   git push origin HEAD 2>/dev/null || git push --set-upstream origin HEAD
-  gh pr create --title "$title" --body "$body" \
+  gh pr create --title "$title" --body "${body:-""}" \
     && _GH_MSG="  ✅ PR created${number:+ — will close #$number on merge}"
   [[ -n "$number" ]] && _gh_project_sync "$number" "In Review" &!
 }
