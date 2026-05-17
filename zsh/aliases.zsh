@@ -122,16 +122,6 @@ _GOVEE_CMD_WAS_PUSH=0
 
 _govee_flash() {
   local color="$1"
-  local now; now=$(date +%s)
-  local is_red=0
-  [[ "$color" == *'"r":255,"g":0'* ]] && is_red=1
-  if [[ $is_red -eq 1 ]]; then
-    (( now - _GOVEE_LAST_FLASH_RED < 60 )) && return
-    _GOVEE_LAST_FLASH_RED=$now
-  else
-    (( now - _GOVEE_LAST_FLASH_GREEN < 60 )) && return
-    _GOVEE_LAST_FLASH_GREEN=$now
-  fi
   {
     local -a devices=("$GOVEE_OFFICE" "$GOVEE_MAIN")
     local -a models=("H6008"          "H610A")
@@ -169,11 +159,18 @@ _govee_precmd() {
   local exit_code=$?
   if [[ $_GOVEE_CMD_WAS_PUSH -eq 1 ]]; then
     _GOVEE_CMD_WAS_PUSH=0
+    local now; now=$(date +%s)
     if [[ $exit_code -eq 0 ]]; then
-      _govee_flash '{"name":"color","value":{"r":0,"g":255,"b":0}}' >/dev/null &!
-    else 
-      _govee_flash '{"name":"color","value":{"r":255,"g":0,"b":0}}' >/dev/null &!
-    fi 
+      if (( now - _GOVEE_LAST_FLASH_GREEN >= 60 )); then
+        _GOVEE_LAST_FLASH_GREEN=$now
+        _govee_flash '{"name":"color","value":{"r":0,"g":255,"b":0}}' &!
+      fi
+    else
+      if (( now - _GOVEE_LAST_FLASH_RED >= 60 )); then
+        _GOVEE_LAST_FLASH_RED=$now
+        _govee_flash '{"name":"color","value":{"r":255,"g":0,"b":0}}' &!
+      fi
+    fi
   fi
 }
 
