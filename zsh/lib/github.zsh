@@ -726,9 +726,11 @@ github_ui_staging() {
 
   local tmp_body
   tmp_body=$(mktemp /tmp/gh-commit-body-XXXX.md)
-  ${EDITOR:-nano} "$tmp_body" </dev/tty >/dev/tty
+  local _ed="${EDITOR:-nano}"
+  [[ "$_ed" == *code* ]] && _ed="$_ed --wait"
+  ${=_ed} "$tmp_body" </dev/tty >/dev/tty
   local body
-  body=$(grep -v '^\s*#' "$tmp_body" | sed '/./,$!d' | sed -e :a -e '/^\s*$/{$d;N;ba}')
+  body=$(grep -v '^\s*#' "$tmp_body" | awk 'NF{found=NR} {lines[NR]=$0} END{for(i=1;i<=found;i++) print lines[i]}')
   rm -f "$tmp_body"
 
   if [[ -n "$body" ]]; then
