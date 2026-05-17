@@ -73,11 +73,11 @@ govee() {
     local room action
 
     room=$(printf "office\nmain\nliving room\nkitchen\nhallway\ndreamview\nall\n— exit —" | \
-      fzf "${FZF_THEME[@]}" --prompt="💡 room > " --height=50% --border --no-sort)
+      fzf "${FZF_THEME[@]}" --prompt="💡 room > " --height=50% --border=rounded --no-sort)
     [[ -z "$room" || "$room" == "— exit —" ]] && return
 
     action=$(printf "on\noff\npink\nblue\nred\nwhite\ngreen\npurple\n← back" | \
-      fzf "${FZF_THEME[@]}" --prompt="⚡ action > " --height=50% --border --no-sort)
+      fzf "${FZF_THEME[@]}" --prompt="⚡ action > " --height=50% --border=rounded --no-sort)
     [[ -z "$action" ]] && return
     [[ "$action" == "← back" ]] && continue
 
