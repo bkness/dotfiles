@@ -223,7 +223,7 @@ _palette_widget() {
 
   cat > "$_pick_script" <<PICK
 #!/bin/zsh
-_r=\$(awk -F'│' '{gsub(/^[[:space:]]+|[[:space:]]+$/,"",\$2);print \$2}' '${_pal_tmp}' | sort -u | fzf --prompt='  category ❯ ' --height=50% --border=rounded)
+_r=\$(awk -F'│' '{gsub(/^[[:space:]]+|[[:space:]]+$/,"",\$2);print \$2}' '${_pal_tmp}' | sort -u | fzf --prompt='  category ❯ ' --height=50% --border=rounded < /dev/tty)
 [[ -n "\$_r" ]] && echo "\$_r" > '${_cat_tmp}'
 PICK
 
