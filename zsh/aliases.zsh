@@ -4,6 +4,7 @@ alias gc="git commit" # desc: Commit changes using 'git commit'
 alias gca="git commit -a -m" # desc: Stage all changes and commit with a message 
 alias gp="git push" # desc: Push changes to the remote repository
 alias gpl="git pull" # desc: Pull changes from the remote repository 
+alias gplo="git pull origin main" #desc: Pulls origin main if working on branch thats not main/master
 alias gl="git log --oneline --graph --decorate" # desc: Show a concise and visually appealing commit history 
 alias gr="git restore" # desc: Restore changes in the working directory 
 alias gss="git switch" # desc: Switch branches
