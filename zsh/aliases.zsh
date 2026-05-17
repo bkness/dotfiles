@@ -150,7 +150,11 @@ _govee_flash() {
 
 _govee_preexec() {
   _GOVEE_CMD_WAS_PUSH=0
-  [[ "$1" == git\ push* || "$1" == gp* ]] && _GOVEE_CMD_WAS_PUSH=1
+  if [[ "$1" == git\ push* || "$1" == gp ]]; then
+    local ahead
+    ahead=$(git rev-list @{u}..HEAD 2>/dev/null | wc -l)
+    (( ahead > 0 )) && _GOVEE_CMD_WAS_PUSH=1
+  fi
 }
 
 _govee_precmd() {

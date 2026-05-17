@@ -100,7 +100,13 @@ _GIT_NAG_PUSH=0
 
 _git_nag_pre() {
   [[ "$1" == git\ commit* ]] && echo "\n  \e[33m⚠  Don't forget to push, you absolute menace.\e[0m\n"
-  [[ "$1" == git\ push* || "$1" == gp ]] && _GIT_NAG_PUSH=1 || _GIT_NAG_PUSH=0
+  if [[ "$1" == git\ push* || "$1" == gp ]]; then
+    local ahead
+    ahead=$(git rev-list @{u}..HEAD 2>/dev/null | wc -l)
+    (( ahead > 0 )) && _GIT_NAG_PUSH=1 || _GIT_NAG_PUSH=0
+  else
+    _GIT_NAG_PUSH=0
+  fi
 }
 
 _git_nag_post() {
