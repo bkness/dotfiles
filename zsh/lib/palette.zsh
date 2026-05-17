@@ -212,18 +212,44 @@ _palette_preview() {
 }
 
 _palette_widget() {
-  local selected
+  local selected _pal_tmp _cat_tmp _pick_script _filter_script
+
+  _pal_tmp=$(mktemp /tmp/.palette-XXXX)
+  _cat_tmp=$(mktemp /tmp/.palette-cat-XXXX)
+  _pick_script=$(mktemp /tmp/.palette-pick-XXXX.sh)
+  _filter_script=$(mktemp /tmp/.palette-filter-XXXX.sh)
+
+  _palette_entries > "$_pal_tmp"
+
+  cat > "$_pick_script" <<PICK
+#!/bin/zsh
+_r=\$(awk -F'│' '{gsub(/^[[:space:]]+|[[:space:]]+$/,"",\$2);print \$2}' '${_pal_tmp}' | sort -u | fzf --prompt='  category ❯ ' --height=50% --border=rounded)
+[[ -n "\$_r" ]] && echo "\$_r" > '${_cat_tmp}'
+PICK
+
+  cat > "$_filter_script" <<FILTER
+#!/bin/zsh
+_c=\$(cat '${_cat_tmp}' 2>/dev/null | xargs)
+if [[ -n "\$_c" ]]; then
+  awk -F'│' -v f="\$_c" '{gsub(/^[[:space:]]+|[[:space:]]+$/,"",\$2); if (\$2 == f) print}' '${_pal_tmp}'
+else
+  cat '${_pal_tmp}'
+fi
+FILTER
+
   selected=$(
-    _palette_entries \
+    cat "$_pal_tmp" \
     | fzf "${FZF_THEME[@]}" \
         --border=rounded \
         --border-label='  ■  COMMAND PALETTE  ' \
         --color=label:#00ff00 \
         --prompt='  ❯ ' \
-        --header='  Ctrl+P — your entire ecosystem' \
+        --header='  Ctrl+P — browse  │  Ctrl+F — filter  │  Ctrl+X — reset' \
         --header-first \
         --with-nth=1 \
         --delimiter='│' \
+        --bind "ctrl-f:execute(zsh '$_pick_script')+reload(zsh '$_filter_script')+change-header(  ■ PALETTE — filtered  │  Ctrl+X — reset all)" \
+        --bind "ctrl-x:execute(printf '' > '$_cat_tmp')+reload(cat '$_pal_tmp')+change-header(  Ctrl+P — browse  │  Ctrl+F — filter  │  Ctrl+X — reset)" \
         --preview='
           cmd=$(echo {} | awk -F"│" "{print \$1}" | sed "s/^[[:space:]]*[^ ]* *//" | xargs)
           cat=$(echo {} | awk -F"│" "{print \$2}" | xargs)
@@ -244,7 +270,9 @@ _palette_widget() {
         ' \
         --preview-window=right:50%:wrap \
         --preview-label='  Info  '
-  ) || return
+  ) || { rm -f "$_pal_tmp" "$_cat_tmp" "$_pick_script" "$_filter_script"; return; }
+
+  rm -f "$_pal_tmp" "$_cat_tmp" "$_pick_script" "$_filter_script"
 
   local cmd category
   cmd=$(echo "$selected" | awk -F'│' '{print $1}' | sed 's/^[[:space:]]*[^ ]* *//' | xargs)
