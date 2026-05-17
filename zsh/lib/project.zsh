@@ -171,13 +171,30 @@ project_ui_recent() {
 }
 
 project_ui_detect() {
-  if [[ -f package.json && -f requirements.txt ]]; then
+  local has_node=0 has_python=0 has_rust=0 _dir
+
+  [[ -f package.json ]] && has_node=1
+  [[ -f requirements.txt || -f pyproject.toml ]] && has_python=1
+  [[ -f Cargo.toml ]] && has_rust=1
+
+  for _dir in frontend client web; do
+    [[ -f "$_dir/package.json" ]] && { has_node=1; break; }
+  done
+
+  for _dir in server backend api; do
+    [[ -f "$_dir/requirements.txt" || -f "$_dir/pyproject.toml" ]] && has_python=1
+    [[ -f "$_dir/Cargo.toml" ]] && has_rust=1
+  done
+
+  local count=$(( has_node + has_python + has_rust ))
+
+  if (( count > 1 )); then
     echo "🔀 Fullstack project detected"
-  elif [[ -f package.json ]]; then
+  elif (( has_node )); then
     echo "📦 Node.js project detected"
-  elif [[ -f requirements.txt ]]; then
+  elif (( has_python )); then
     echo "🐍 Python project detected"
-  elif [[ -f Cargo.toml ]]; then
+  elif (( has_rust )); then
     echo "🦀 Rust project detected"
   else
     echo "❓ Unknown project type"
