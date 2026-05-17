@@ -1,22 +1,5 @@
-# Git — core muscle-memory shortcuts
-alias gs="git status" # desc: Check the status of the working directory 
-alias gc="git commit" # desc: Commit changes using 'git commit'
-alias gca="git commit -a -m" # desc: Stage all changes and commit with a message 
-alias gp="git push" # desc: Push changes to the remote repository
-alias gpl="git pull" # desc: Pull changes from the remote repository 
-alias gplo="git pull origin main" #desc: Pulls origin main if working on branch thats not main/master
-alias gl="git log --oneline --graph --decorate" # desc: Show a concise and visually appealing commit history 
-alias gr="git restore" # desc: Restore changes in the working directory 
-alias gss="git switch" # desc: Switch branches
-alias gst="git stash" # desc: Save changes to a new stash using 'git stash'
-alias gstp="git stash pop" # desc: Apply the most recent stash and remove it from the stash list using 'git stash pop'
-alias gb="git branch" # desc: List, create, or delete branches using 'git branch'
+# Git — interactive shorthands live in zsh/abbreviations (zsh-abbr)
 alias gbclean='git config --global alias.cleanup '"'"'!f() { branch=$(git rev-parse --abbrev-ref HEAD) || exit 1; case "$branch" in main|master) echo "Refusing to delete $branch. Checkout a feature branch first."; exit 1 ;; esac; if git show-ref --verify --quiet refs/heads/main; then base=main; elif git show-ref --verify --quiet refs/heads/master; then base=master; else echo "Could not find local main or master branch."; exit 1; fi; git checkout "$base" && git pull origin "$base" && git branch -d "$branch" && git push origin --delete "$branch"; }; f'"'"' # desc: Clean up current branch and delete remote'
-alias nukebranches="git fetch --prune && git branch -r | grep -v 'HEAD\|main\|master' | sed 's/origin\///' | xargs -I{} git push origin --delete '{}'" # desc: Delete all remote branches except main and master
-alias gco="git checkout" # desc: Switch branch or restore files
-
-# GitHub dashboard
-alias ghui="github_ui" # desc: Open GitHub dashboard
 
 # Govee globals
 GOVEE_OFFICE="6F:1C:60:74:F4:5B:55:F0"
@@ -265,31 +248,13 @@ scan() {
 # Clean shell exit
 bye() { exit }
 
-# Shell
-alias music="open -a Music" # desc: Open Music app
-alias mplay='osascript -e "tell application \"Music\" to playpause"; _shell_current' # desc: Toggle play/pause in Music app 
-alias mnext='osascript -e "tell application \"Music\" to next track"; sleep 1; _shell_current' # desc: Skip to next track in Music app
-alias mprev='osascript -e "tell application \"Music\" to previous track"; sleep 1; _shell_current' # desc: Skip to previous track in Music app
-alias omens='osascript -e "open location \"musics://music.apple.com/us/station/bad-omens-similar-artists-station/ra.467610583\""; _shell_current' # desc: Bad Omens station
-alias prevail='osascript -e "open location \"musics://music.apple.com/us/station/i-prevail-similar-artists-station/ra.948448824\""; _shell_current' # desc: I Prevail station
-alias horizon='osascript -e "open location \"musics://music.apple.com/us/station/bring-me-the-horizon-similar-artists-station/ra.121043936\""; _shell_current' # desc: Bring me the Horizon station
-alias mymusic='osascript -e "open location \"musics://music.apple.com/us/station/brandons-station/ra.u-40787829f08b63e81abb70ff757aa95f\""; _shell_current' #desc: My Music station
-alias wat='open "https://www.weballtech.com"' # desc: Open WebAllTech website
-alias apistat='open "https://www.weballtech.com/api/"' # desc: Open WebAllTech API status page
-alias bk='open "https://www.github.com/bkness/"' # desc: Opens my github
-alias chrome='open -a "Google Chrome"' # desc: Open Google Chrome
-alias vsfont='open -a "Visual Studio Code" ~/Library/Application\ Support/Code/User/settings.json' # desc: Open VS Code settings for font editing
-alias editstarship='open ~/.config/starship.toml' # desc: Edit Starship prompt configuration
-alias c="clear" # desc: Clear terminal
-alias ..="cd .." # desc: Up one directory
-alias l="eza --icons --group-directories-first"
-alias vima="vim ~/dev/dotfiles/zsh/aliases.zsh" 
-alias vimz="vim ~/dev/dotfiles/zsh"
-alias vimj="vim ~/dev/projects"
-alias ll="eza -la --icons" # desc: List all files (detailed, icons)
+# Shell — interactive shorthands live in zsh/abbreviations (zsh-abbr)
 alias ls="eza --icons" # desc: List files (icons)
+alias ll="eza -la --icons" # desc: List all files (detailed, icons)
+alias l="eza --icons --group-directories-first"
 alias cat="bat" # desc: View file with syntax highlight
-alias safe="zsh -f" # desc: Start shell without config
+alias mkdir="mkdir -p" # desc: Create directories (with parents)
+alias grep="grep --color=auto" # desc: Colored grep output
 alias ss="screencapture -i ~/Desktop/screenshot-$(date +%s).png" # desc: Interactive screenshot to Desktop
 reload() {
   local count=$(( $(cat ~/.shell_count 2>/dev/null || echo 1) - 1 ))
@@ -297,14 +262,6 @@ reload() {
   echo $count > ~/.shell_count
   exec zsh -l
 }
-alias sz="source ~/.zshrc" # desc: Reload zsh config
-alias mkdir="mkdir -p"  # desc: Create directories (with parents)
-alias grep="grep --color=auto" # desc: Colored grep output
-alias cl="claude --resume" # desc: Resume last Claude Code session
-alias sandbox="open ~/dev/tools/js-sandbox.html"
-alias pixel='system_profiler SPDisplaysDataType | grep -E "Resolution|Position|Arrangement"'
-alias monpos='system_profiler SPDisplaysDataType | grep -A 20 "Resolution"'
-alias coord="cliclick p"
 
 # Govee light controls via interactive menu
 # Use: govee() to open fzf menu, pick room + action

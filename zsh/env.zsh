@@ -13,6 +13,7 @@ export DEV_ROOT="$HOME/dev/projects"
 # Quality of life
 setopt NO_BEEP
 setopt PROMPT_SUBST
+stty -ixon 2>/dev/null  # free up Ctrl+Q from flow control
 setopt INTERACTIVE_COMMENTS
 
 [[ -f ~/.secrets ]] && source ~/.secrets
