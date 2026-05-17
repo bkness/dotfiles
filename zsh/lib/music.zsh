@@ -83,35 +83,6 @@ _music_now_playing() {
 }
 
 music_ui() {
-  # One combined call — state + loved status (nested try so loved failure won't wipe name/artist)
-  local raw_state
-  raw_state=$(osascript \
-    -e 'tell application "Music"' \
-    -e '  set s to player state as string' \
-    -e '  try' \
-    -e '    set n to name of current track' \
-    -e '    set ar to artist of current track' \
-    -e '    set lv to "false"' \
-    -e '    try' \
-    -e '      set lv to loved of current track as string' \
-    -e '    end try' \
-    -e '    return s & "|" & n & "|" & ar & "|" & lv' \
-    -e '  on error' \
-    -e '    return s & "|||false"' \
-    -e '  end try' \
-    -e 'end tell' 2>/dev/null)
-
-  local parts=("${(@s:|:)raw_state}")
-  local state="${parts[1]}" track_name="${parts[2]}" track_artist="${parts[3]}" loved="${parts[4]}"
-
-  local now_playing="■  Not playing"
-  local love_option="  ♥  Love Track"
-  if [[ "$state" == "playing" || "$state" == "paused" ]]; then
-    local icon="▶"; [[ "$state" == "paused" ]] && icon="⏸"
-    now_playing="$icon  $track_name — $track_artist"
-    [[ "$loved" == "true" ]] && love_option="  ♡  Unlove Track" || love_option="  ♥  Love Track"
-  fi
-
   local _preview_script
   _preview_script=$(mktemp /tmp/.music-preview-XXXX.sh)
   cat > "$_preview_script" <<'PREVIEW'
@@ -158,56 +129,89 @@ printf "\n  %s  %s\n\n  Artist   %s\n  Album    %s\n  Time     %d:%02d / %d:%02d
 PREVIEW
   chmod +x "$_preview_script"
 
-  local choice
-  choice=$(printf '%s\n' \
-    "  ▶/⏸  Play/Pause" \
-    "  ⏭   Next Track" \
-    "  ⏮   Previous Track" \
-    "$love_option" \
-    "  🔍  Search Catalog" \
-    "  🎵  Stations" \
-    | fzf "${FZF_THEME[@]}" \
-        --border=rounded \
-        --border-label='  ♫  MUSIC  ' \
-        --color=label:#00ff00 \
-        --prompt='  ❯ ' \
-        --header="  $now_playing" \
-        --header-first \
-        --no-sort \
-        --height=60% \
-        --preview="zsh '$_preview_script'" \
-        --preview-window=right:40%:wrap \
-        --preview-label='  Now Playing  ') || { rm -f "$_preview_script"; return; }
+  while true; do
+    # Fresh state each iteration so header + love option reflect current track
+    local raw_state
+    raw_state=$(osascript \
+      -e 'tell application "Music"' \
+      -e '  set s to player state as string' \
+      -e '  try' \
+      -e '    set n to name of current track' \
+      -e '    set ar to artist of current track' \
+      -e '    set lv to "false"' \
+      -e '    try' \
+      -e '      set lv to loved of current track as string' \
+      -e '    end try' \
+      -e '    return s & "|" & n & "|" & ar & "|" & lv' \
+      -e '  on error' \
+      -e '    return s & "|||false"' \
+      -e '  end try' \
+      -e 'end tell' 2>/dev/null)
+
+    local parts=("${(@s:|:)raw_state}")
+    local state="${parts[1]}" track_name="${parts[2]}" track_artist="${parts[3]}" loved="${parts[4]}"
+
+    local now_playing="■  Not playing"
+    local love_option="  ♥  Love Track"
+    if [[ "$state" == "playing" || "$state" == "paused" ]]; then
+      local icon="▶"; [[ "$state" == "paused" ]] && icon="⏸"
+      now_playing="$icon  $track_name — $track_artist"
+      [[ "$loved" == "true" ]] && love_option="  ♡  Unlove Track" || love_option="  ♥  Love Track"
+    fi
+
+    local choice
+    choice=$(printf '%s\n' \
+      "  ▶/⏸  Play/Pause" \
+      "  ⏭   Next Track" \
+      "  ⏮   Previous Track" \
+      "$love_option" \
+      "  🔍  Search Catalog" \
+      "  🎵  Stations" \
+      | fzf "${FZF_THEME[@]}" \
+          --border=rounded \
+          --border-label='  ♫  MUSIC  ' \
+          --color=label:#00ff00 \
+          --prompt='  ❯ ' \
+          --header="  $now_playing" \
+          --header-first \
+          --no-sort \
+          --height=60% \
+          --preview="zsh '$_preview_script'" \
+          --preview-window=right:40%:wrap \
+          --preview-label='  Now Playing  ') || break
+
+    case "${choice##  }" in
+      "▶/⏸  Play/Pause")
+        osascript -e 'tell application "Music" to playpause'
+        sleep 0.3
+        _MUSIC_MSG="  ♫  $(_music_now_playing)"
+        break
+        ;;
+      "⏭   Next Track")
+        osascript -e 'tell application "Music" to next track'
+        sleep 0.8
+        ;;
+      "⏮   Previous Track")
+        osascript -e 'tell application "Music" to previous track'
+        sleep 0.8
+        ;;
+      "♥  Love Track")
+        osascript -e 'tell application "Music" to set loved of current track to true'
+        _MUSIC_MSG="  ♥  Loved: $track_name"
+        break
+        ;;
+      "♡  Unlove Track")
+        osascript -e 'tell application "Music" to set loved of current track to false'
+        _MUSIC_MSG="  ♡  Unloved: $track_name"
+        break
+        ;;
+      "🔍  Search Catalog") music_ui_search; break ;;
+      "🎵  Stations")        music_ui_stations; break ;;
+    esac
+  done
 
   rm -f "$_preview_script"
-
-  case "${choice##  }" in
-    "▶/⏸  Play/Pause")
-      osascript -e 'tell application "Music" to playpause'
-      sleep 0.3
-      _MUSIC_MSG="  ♫  $(_music_now_playing)"
-      ;;
-    "⏭   Next Track")
-      osascript -e 'tell application "Music" to next track'
-      sleep 0.8
-      _MUSIC_MSG="  ⏭  $(_music_now_playing)"
-      ;;
-    "⏮   Previous Track")
-      osascript -e 'tell application "Music" to previous track'
-      sleep 0.8
-      _MUSIC_MSG="  ⏮  $(_music_now_playing)"
-      ;;
-    "♥  Love Track")
-      osascript -e 'tell application "Music" to set loved of current track to true'
-      _MUSIC_MSG="  ♥  Loved: $track_name"
-      ;;
-    "♡  Unlove Track")
-      osascript -e 'tell application "Music" to set loved of current track to false'
-      _MUSIC_MSG="  ♡  Unloved: $track_name"
-      ;;
-    "🔍  Search Catalog") music_ui_search ;;
-    "🎵  Stations")        music_ui_stations ;;
-  esac
+  [[ -z "$_MUSIC_MSG" ]] && _MUSIC_MSG="  ♫  $(_music_now_playing)"
 }
 
 music_ui_search() {
