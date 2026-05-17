@@ -191,6 +191,7 @@ fmt_palette_tune() {
 
 
 _palette_widget() {
+  zle -I
   local selected _pal_tmp _cats_tmp _idx_tmp _cycle_script _filter_script _header_script
 
   _pal_tmp=$(mktemp /tmp/.palette-XXXX)
