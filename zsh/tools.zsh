@@ -36,7 +36,10 @@ zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 
 # desc: Enhanced Ctrl-R history search with fzf preview
 fzf-history-widget() {
-  BUFFER=$(fc -l 1 \
+  zle -I
+  local saved="$BUFFER"
+  local result
+  result=$(fc -l 1 \
     | sed 's/^[ ]*[0-9]*[ ]*//' \
     | fzf --tac --no-sort \
         --preview='echo {} | bat --language=bash --color=always --style=plain' \
@@ -48,7 +51,8 @@ fzf-history-widget() {
         --color=border:#00ff00 \
         --color=prompt:#00ff00,pointer:#00ff00,marker:#00ff00 \
         --border-label="History Search"
-  )
+  ) || { BUFFER="$saved"; CURSOR=$#BUFFER; zle reset-prompt; return; }
+  BUFFER="$result"
   CURSOR=$#BUFFER
   zle reset-prompt
 }
