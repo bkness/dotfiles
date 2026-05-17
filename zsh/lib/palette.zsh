@@ -299,6 +299,8 @@ PREVIEW
 
   if [[ "$category" == "widget" ]]; then
     zle "$cmd"
+    local _fwd_msg="${_PROJECT_MSG:-${_GH_MSG:-${_GOVEE_MSG:-}}}"
+    [[ -n "$_fwd_msg" ]] && { zle -M "$_fwd_msg"; zle reset-prompt; }
   else
     BUFFER="$cmd"
     CURSOR=${#BUFFER}
