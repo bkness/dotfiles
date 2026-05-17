@@ -77,13 +77,13 @@ project_ui() {
     "💼  List All Projects") project_ui_list ;;
     "📝  Edit Readme")       quick_edit_readme ;;
     "🐙  GitHub")            github_ui ;;
-    "🔄  Refresh Cache")     refresh-dev-cache; echo "✅ Cache refreshed" ;;
+    "🔄  Refresh Cache")     refresh-dev-cache; _PROJECT_MSG="  ✅ Cache refreshed" ;;
     "🧹  Clear Cache")
       : > "$DEV_CACHE"
-      echo "🧹 Cache cleared"
       refresh-dev-cache
+      _PROJECT_MSG="  🧹 Cache cleared"
       ;;
-    "🧪  Detect Project Type") project_ui_detect ;;
+    "🧪  Detect Project Type") _PROJECT_MSG="  $(project_ui_detect)" ;;
     "🛠   Settings")           project_settings ;;
   esac
 }
@@ -205,7 +205,7 @@ project_settings() {
 
   jq --arg key "$key" --argjson val "$new_value" '.[$key] = $val' "$settings" > /tmp/forged-settings.tmp \
     && mv /tmp/forged-settings.tmp "$settings"
-  echo "  $key → $new_value"
+  _PROJECT_MSG="  ✅ $key → $new_value"
 }
 
 # ---------------------------------------
