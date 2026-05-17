@@ -283,11 +283,11 @@ PREVIEW
           --preview="zsh '$_preview_script' {}" \
           --preview-window=right:50%:wrap \
           --preview-label='  Info  '
-    ) || { rm -f "$_pal_tmp" "$_cats_tmp" "$_idx_tmp" "$_cycle_script" "$_filter_script"
-  "$_header_script" "$_preview_script"; return; }
+    ) || { rm -f "$_pal_tmp" "$_cats_tmp" "$_idx_tmp" "$_cycle_script" "$_filter_script" \
+      "$_header_script" "$_preview_script"; return; }
 
-    rm -f "$_pal_tmp" "$_cats_tmp" "$_idx_tmp" "$_cycle_script" "$_filter_script"
-  "$_header_script" "$_preview_script"
+    rm -f "$_pal_tmp" "$_cats_tmp" "$_idx_tmp" "$_cycle_script" "$_filter_script" \
+      "$_header_script" "$_preview_script"
 
   local cmd category
   cmd=$(echo "$selected" | awk -F'│' '{print $1}' | sed 's/^[[:space:]]*[^ ]* *//' | xargs)
