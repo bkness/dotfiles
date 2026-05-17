@@ -73,11 +73,11 @@ govee() {
     local room action
 
     room=$(printf "office\nmain\nliving room\nkitchen\nhallway\ndreamview\nall\n— exit —" | \
-      fzf --prompt="💡 room > " --height=50% --border --no-sort)
+      fzf "${FZF_THEME[@]}" --prompt="💡 room > " --height=50% --border --no-sort)
     [[ -z "$room" || "$room" == "— exit —" ]] && return
 
     action=$(printf "on\noff\npink\nblue\nred\nwhite\ngreen\npurple\n← back" | \
-      fzf --prompt="⚡ action > " --height=50% --border --no-sort)
+      fzf "${FZF_THEME[@]}" --prompt="⚡ action > " --height=50% --border --no-sort)
     [[ -z "$action" ]] && return
     [[ "$action" == "← back" ]] && continue
 
@@ -102,13 +102,16 @@ govee() {
                        done ;;
       esac
 
-      echo "💡 $room → $action"
+      _GOVEE_MSG="  💡 $room → $action"
     done
 }
 _govee_widget() {
   zle -I
-  govee
-  zle reset-prompt
+  _GOVEE_MSG=""
+  { govee } always {
+    zle reset-prompt
+    [[ -n "$_GOVEE_MSG" ]] && zle -M "$_GOVEE_MSG"
+  }
 }
 zle -N _govee_widget # desc: create zle widget for govee menu
 bindkey '^V' _govee_widget # desc: Ctrl+V to open Govee light control menu
