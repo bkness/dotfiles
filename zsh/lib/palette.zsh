@@ -22,6 +22,7 @@ _palette_entries() {
   _palette_row "newproj" "cmd" "Create a new project"
   _palette_row "quick_edit_readme" "cmd" "Edit README in current project"
   _palette_row "_explorer_widget" "widget" "Browse files (Ctrl+E)"
+  _palette_row "project_ui_widget" "widget" "Project dashboard"
 
   # --- Shell ---
   _palette_row "reload" "shell" "Restart shell (decrements counter)"
@@ -188,28 +189,6 @@ fmt_palette_tune() {
   printf "\nTry: fmt_palette_tune 20 8\n"
 }
 
-_palette_preview() {
-  local line="$1"
-  local cmd=$(echo "$line" | awk -F'│' '{print $1}' | sed 's/^[[:space:]]*[^ ]* *//' | xargs)
-  local category=$(echo "$line" | awk -F'│' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2}')
-  local desc=$(echo "$line" | awk -F'│' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $3); print $3}')
-
-  printf "\033[32mCommand:\033[0m  %s\n" "$cmd"
-  printf "\033[32mCategory:\033[0m %s\n" "$category"
-  printf "\033[32mInfo:\033[0m     %s\n\n" "$desc"
-
-  if typeset -f "$cmd" >/dev/null 2>&1; then
-    printf "\033[32mSource:\033[0m\n"
-    typeset -f "$cmd" | head -20
-  elif alias "$cmd" >/dev/null 2>&1; then
-    printf "\033[32mAlias:\033[0m  %s\n" "$(alias "$cmd")"
-  else
-    local base="${cmd%% *}"
-    local type_info
-    type_info=$(type "$base" 2>/dev/null)
-    [[ -n "$type_info" && "$type_info" != *"not found"* ]] && printf "\033[32mType:\033[0m   %s\n" "$type_info"
-  fi
-}
 
 _palette_widget() {
   local selected _pal_tmp _cats_tmp _idx_tmp _cycle_script _filter_script _header_script

@@ -71,8 +71,9 @@ fcd() {
 # desc: Open project dashboard (bind manually or via palette)
 project_ui_widget() {
   zle -I
-  project_ui
-  zle reset-prompt
+  { project_ui } always {
+    zle reset-prompt
+  }
 }
 
 zle -N project_ui_widget
