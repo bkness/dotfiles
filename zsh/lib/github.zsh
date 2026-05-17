@@ -127,7 +127,8 @@ _gh_ensure_project_scope() {
 # Caches result in ~/.config/forged/projects as "owner/repo=PROJECT_ID"
 _gh_get_or_create_project() {
   local repo
-  repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null) || return 1
+  repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null) \
+    || { echo "not in a gh repo" >&2; return 1; }
   local repo_name="${repo#*/}"
 
   mkdir -p "${_FORGED_PROJECTS_CACHE%/*}"
@@ -138,7 +139,8 @@ _gh_get_or_create_project() {
   cached=$(grep "^${repo}=" "$_FORGED_PROJECTS_CACHE" 2>/dev/null | cut -d= -f2)
   [[ -n "$cached" ]] && echo "$cached" && return 0
 
-  _gh_ensure_project_scope || return 1
+  _gh_ensure_project_scope \
+    || { echo "missing project scope — run: gh auth refresh -s project" >&2; return 1; }
 
   local owner="${repo%/*}"
 
@@ -171,7 +173,7 @@ _gh_get_or_create_project() {
   owner_id=$(gh api graphql -f query="
     query { repositoryOwner(login: \"$owner\") { id } }" \
     --jq '.data.repositoryOwner.id' 2>/dev/null)
-  [[ -z "$owner_id" ]] && return 1
+  [[ -z "$owner_id" ]] && { echo "failed to get owner id for $owner" >&2; return 1; }
 
   local new_id
   new_id=$(gh api graphql -f query="
@@ -180,7 +182,7 @@ _gh_get_or_create_project() {
         projectV2 { id }
       }
     }" --jq '.data.createProjectV2.projectV2.id' 2>/dev/null)
-  [[ -z "$new_id" ]] && return 1
+  [[ -z "$new_id" ]] && { echo "failed to create project board for $repo_name" >&2; return 1; }
 
   # Link the repo to the project so issues appear automatically
   local repo_node_id
@@ -207,14 +209,17 @@ _gh_project_set_status() {
   local board_status="$2"
 
   local project_id
-  project_id=$(_gh_get_or_create_project 2>/dev/null) || return 1
+  project_id=$(_gh_get_or_create_project) \
+    || { echo "failed to get/create project" >&2; return 1; }
 
   local repo
-  repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null) || return 1
+  repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null) \
+    || { echo "failed to get repo" >&2; return 1; }
 
   # Get issue node ID
   local issue_node_id
-  issue_node_id=$(gh api "repos/${repo}/issues/${issue_number}" --jq '.node_id' 2>/dev/null) || return 1
+  issue_node_id=$(gh api "repos/${repo}/issues/${issue_number}" --jq '.node_id' 2>/dev/null) \
+    || { echo "failed to get node id for issue #${issue_number}" >&2; return 1; }
 
   # Add item to project (idempotent)
   local item_id
@@ -223,11 +228,11 @@ _gh_project_set_status() {
       addProjectV2ItemById(input: { projectId: \"$project_id\", contentId: \"$issue_node_id\" }) {
         item { id }
       }
-    }" --jq '.data.addProjectV2ItemById.item.id' 2>/dev/null) || return 1
+    }" --jq '.data.addProjectV2ItemById.item.id' 2>/dev/null) \
+    || { echo "failed to add issue #${issue_number} to project" >&2; return 1; }
 
-  # Find the Status field ID
-  local field_id option_id
-  local fields_json
+  # Find the Status field ID and option ID
+  local field_id option_id fields_json
   fields_json=$(gh api graphql -f query="
     query {
       node(id: \"$project_id\") {
@@ -255,7 +260,10 @@ _gh_project_set_status() {
     | select(.name == $s)
     | .id' 2>/dev/null)
 
-  [[ -z "$field_id" || -z "$option_id" ]] && return 1
+  if [[ -z "$field_id" || -z "$option_id" ]]; then
+    echo "Status field/option not found (status=\"$board_status\", field_id=${field_id:-empty}, option_id=${option_id:-empty})" >&2
+    return 1
+  fi
 
   # Set the status
   gh api graphql -f query="
@@ -266,13 +274,16 @@ _gh_project_set_status() {
         fieldId: \"$field_id\"
         value: { singleSelectOptionId: \"$option_id\" }
       }) { projectV2Item { id } }
-    }" --silent >/dev/null 2>&1
+    }" --silent >/dev/null 2>&1 \
+    || { echo "failed to update status field to \"$board_status\"" >&2; return 1; }
 }
 
 _gh_project_sync() {
   mkdir -p "${_GH_PROJECT_ERR_LOG%/*}"
-  _gh_project_set_status "$@" \
-    || printf "%s  project sync failed: #%s → %s\n" "$(date +%H:%M)" "$1" "$2" >> "$_GH_PROJECT_ERR_LOG"
+  local err
+  err=$( { _gh_project_set_status "$@"; } 2>&1 ) \
+    || printf "%s  project sync failed: #%s → %s\n  reason: %s\n" \
+        "$(date +%H:%M)" "$1" "$2" "${err:-no detail captured}" >> "$_GH_PROJECT_ERR_LOG"
 }
 
 # ---------------------------------------
