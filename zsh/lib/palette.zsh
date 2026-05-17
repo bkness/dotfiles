@@ -185,10 +185,16 @@ _palette_preview() {
   printf "\033[32mCategory:\033[0m %s\n" "$category"
   printf "\033[32mInfo:\033[0m     %s\n\n" "$desc"
 
-  # Show function source if it exists
   if typeset -f "$cmd" >/dev/null 2>&1; then
     printf "\033[32mSource:\033[0m\n"
     typeset -f "$cmd" | head -20
+  elif alias "$cmd" >/dev/null 2>&1; then
+    printf "\033[32mAlias:\033[0m  %s\n" "$(alias "$cmd")"
+  else
+    local base="${cmd%% *}"
+    local type_info
+    type_info=$(type "$base" 2>/dev/null)
+    [[ -n "$type_info" ]] && printf "\033[32mType:\033[0m   %s\n" "$type_info"
   fi
 }
 
@@ -215,6 +221,12 @@ _palette_widget() {
           if typeset -f "$cmd" >/dev/null 2>&1; then
             printf "\033[32mSource:\033[0m\n"
             typeset -f "$cmd" 2>/dev/null | head -25
+          elif alias "$cmd" >/dev/null 2>&1; then
+            printf "\033[32mAlias:\033[0m  %s\n" "$(alias "$cmd")"
+          else
+            base="${cmd%% *}"
+            type_info=$(type "$base" 2>/dev/null)
+            [[ -n "$type_info" ]] && printf "\033[32mType:\033[0m   %s\n" "$type_info"
           fi
         ' \
         --preview-window=right:50%:wrap \
