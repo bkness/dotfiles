@@ -1,3 +1,6 @@
 .DS_Store
 *.zwc
-.DS_Store
+*.swp
+*.swo
+*.bak
+.claude/
