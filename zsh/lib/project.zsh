@@ -187,7 +187,9 @@ project_ui_detect() {
 quick_edit_readme() {
   local readme="${PWD}/README.md"
   [[ ! -f "$readme" ]] && echo "# $(basename "$PWD")" > "$readme"
-  ${EDITOR:-vim} "$readme"
+  local _ed="${EDITOR:-vim}"
+  [[ "$_ed" == *code* ]] && _ed="$_ed --wait"
+  ${=_ed} "$readme" </dev/tty >/dev/tty
 }
 
 project_settings() {
