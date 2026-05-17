@@ -196,7 +196,7 @@ project_settings() {
   local settings="$HOME/.forged-settings.json"
   local selection
   selection=$(jq -r 'to_entries[] | "\(.key); \(.value)"' "$settings" 2>/dev/null \
-    | fzf --border=rounded --prompt=' ❯ ') || return
+    | fzf "${FZF_THEME[@]}" --border=rounded --prompt=' ❯ ') || return
 
   local key=$(echo "$selection" | cut -d';' -f1 | xargs)
   local value=$(echo "$selection" | cut -d';' -f2 | xargs)
