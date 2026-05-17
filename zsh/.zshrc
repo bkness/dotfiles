@@ -24,6 +24,9 @@ command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init zsh)"
 # Atuin — sqlite-backed history search (replaces Ctrl+R widget in tools.zsh)
 command -v atuin >/dev/null 2>&1 && eval "$(atuin init zsh --disable-up-arrow)"
 
+# direnv — per-project .envrc auto-load/unload
+command -v direnv >/dev/null 2>&1 && eval "$(direnv hook zsh)"
+
 # Plugin registry — must load before hooks and project plugins
 source ~/dev/dotfiles/zsh/lib/plugin-registry.zsh
 
