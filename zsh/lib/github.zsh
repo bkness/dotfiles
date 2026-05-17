@@ -517,7 +517,7 @@ github_ui_issues() {
           local slug
           slug=$(echo "$issue_title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-40)
           local branch="${branch_type}/${number}-${slug}"
-          git switch -c "$branch" && echo "  ✅ Switched to $branch"
+          git switch -c "$branch" && _GH_MSG="  ✅ Switched to $branch"
           _gh_project_sync "$number" "In Progress" &!
           ;;
         "🔀  Open PR")         github_ui_open_pr "$number" ;;
@@ -531,7 +531,7 @@ github_ui_issues() {
                 --border-label='  ◈  LABEL  ' \
                 --prompt='  ❯ ' \
                 --height=40%) || continue
-          gh issue edit "$number" --add-label "$label" && echo "  ✅ Labeled #$number → $label"
+          gh issue edit "$number" --add-label "$label" && _GH_MSG="  ✅ Labeled #$number → $label"
           ;;
         "✅  Close")           _gh_confirm "Close issue #$number?" && gh issue close "$number" && _GH_MSG="  ✅ Closed issue #$number" ;;
         "💬  Comment")
@@ -715,7 +715,7 @@ github_ui_staging() {
   local unstaged
   unstaged=$(git status --short 2>/dev/null)
   if [[ -z "$unstaged" ]]; then
-    echo "  ✅ Nothing to stage — working tree clean"
+    _GH_MSG="  ✅ Nothing to stage — working tree clean"
     return
   fi
 
@@ -932,7 +932,7 @@ _github_create_issue() {
   url=$(gh issue create "${args[@]}" 2>&1) || { echo "  ❌ Failed to create issue"; return 1; }
   local number
   number=$(echo "$url" | grep -oE '[0-9]+$')
-  echo "  ✅ Issue #$number created"
+  _GH_MSG="  ✅ Issue #$number created"
   _gh_project_sync "$number" "Todo" &!
 
   # Offer to create a branch tied to the issue
@@ -949,7 +949,7 @@ _github_create_issue() {
   local slug
   slug=$(echo "$title" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-40)
   local branch="${branch_type}/${number}-${slug}"
-  git switch -c "$branch" && echo "  ✅ Switched to $branch"
+  git switch -c "$branch" && _GH_MSG="  ✅ Switched to $branch"
   _gh_project_sync "$number" "In Progress" &!
 }
 
