@@ -1,0 +1,1 @@
+trap 'rm -f /tmp/tmpfile' EXIT INT TERM
