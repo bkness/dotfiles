@@ -286,25 +286,29 @@ else
 fi
 PREVIEW
 
-  selected=$(
-    cat "$_pal_tmp" \
-    | fzf "${FZF_THEME[@]}" \
-        --border=rounded \
-        --border-label='  ■  COMMAND PALETTE  ' \
-        --color=label:#00ff00 \
-        --prompt='  ❯ ' \
-        --header='  Ctrl+P — browse  │  Ctrl+F — filter  │  Ctrl+X — reset' \
-        --header-first \
-        --with-nth=1 \
-        --delimiter='│' \
-        --bind "ctrl-f:execute-silent(zsh '$_cycle_script')+reload(zsh '$_filter_script')+transform-header(zsh '$_header_script')" \
-        --bind "ctrl-x:execute-silent(echo 0 > '$_idx_tmp')+reload(cat '$_pal_tmp')+change-header(  Ctrl+P — browse  │  Ctrl+F — filter  │  Ctrl+X — reset)" \
-        --preview="zsh '$_preview_script' {}" \
-        --preview-window=right:50%:wrap \
-        --preview-label='  Info  '
-  ) || { rm -f "$_pal_tmp" "$_cats_tmp" "$_idx_tmp" "$_cycle_script" "$_filter_script" "$_header_script" "$_preview_script"; return; }
+ selected=$(
+      cat "$_pal_tmp" \
+      | fzf "${FZF_THEME[@]}" \
+          --border=rounded \
+          --border-label='  ■  COMMAND PALETTE  ' \
+          --color=label:#00ff00 \
+          --prompt='  ❯ ' \
+          --header='  Ctrl+P — browse  │  Ctrl+F — filter  │  Ctrl+X — reset' \
+          --header-first \
+          --with-nth=1 \
+          --delimiter='│' \
+          --bind "ctrl-f:execute-silent(zsh '$_cycle_script')+reload(zsh
+  '$_filter_script')+transform-header(zsh '$_header_script')" \
+          --bind "ctrl-x:execute-silent(echo 0 > '$_idx_tmp')+reload(cat
+  '$_pal_tmp')+change-header(  Ctrl+P — browse  │  Ctrl+F — filter  │  Ctrl+X — reset)" \
+          --preview="zsh '$_preview_script' {}" \
+          --preview-window=right:50%:wrap \
+          --preview-label='  Info  '
+    ) || { rm -f "$_pal_tmp" "$_cats_tmp" "$_idx_tmp" "$_cycle_script" "$_filter_script"
+  "$_header_script" "$_preview_script"; return; }
 
-  rm -f "$_pal_tmp" "$_cats_tmp" "$_idx_tmp" "$_cycle_script" "$_filter_script" "$_header_script" "$_preview_script"
+    rm -f "$_pal_tmp" "$_cats_tmp" "$_idx_tmp" "$_cycle_script" "$_filter_script"
+  "$_header_script" "$_preview_script"
 
   local cmd category
   cmd=$(echo "$selected" | awk -F'│' '{print $1}' | sed 's/^[[:space:]]*[^ ]* *//' | xargs)
