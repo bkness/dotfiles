@@ -5,11 +5,13 @@
 
 _palette_entries() {
   local icon="■"
+  local -A _seen
 
   _palette_row() {
     local cmd="$1"
     local category="$2"
     local desc="$3"
+    _seen[$cmd]=1
     printf "%s  %-24s │ %-7s │ %s\n" "$icon" "$cmd" "$category" "$desc"
   }
 
@@ -123,6 +125,17 @@ _palette_entries() {
       _palette_row "$fn" "hook" "on event: $event"
     done
   done
+
+  # --- Live: aliases not already listed ---
+  local _zinit_skip="zi|zini|zplg|zpl|zinit|run-help|which-command"
+  while IFS='=' read -r name expansion; do
+    [[ -z "${_seen[$name]}" ]] || continue
+    [[ "$name" == _* ]] && continue
+    [[ "$name" =~ ^($_zinit_skip)$ ]] && continue
+    expansion="${expansion//\'/}"
+    expansion="${expansion:0:60}"
+    _palette_row "$name" "alias" "$expansion"
+  done < <(alias)
 }
 
 fmt_demo() {
@@ -194,7 +207,7 @@ _palette_preview() {
     local base="${cmd%% *}"
     local type_info
     type_info=$(type "$base" 2>/dev/null)
-    [[ -n "$type_info" ]] && printf "\033[32mType:\033[0m   %s\n" "$type_info"
+    [[ -n "$type_info" && "$type_info" != *"not found"* ]] && printf "\033[32mType:\033[0m   %s\n" "$type_info"
   fi
 }
 
@@ -226,7 +239,7 @@ _palette_widget() {
           else
             base="${cmd%% *}"
             type_info=$(type "$base" 2>/dev/null)
-            [[ -n "$type_info" ]] && printf "\033[32mType:\033[0m   %s\n" "$type_info"
+            [[ -n "$type_info" && "$type_info" != *"not found"* ]] && printf "\033[32mType:\033[0m   %s\n" "$type_info"
           fi
         ' \
         --preview-window=right:50%:wrap \
