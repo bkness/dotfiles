@@ -875,13 +875,14 @@ _github_create_issue() {
     fi
   fi
 
-  local body
-  if [[ -n "$template_body" ]]; then
-    echo -n "  Additional notes (blank to skip): " >/dev/tty; read -r body </dev/tty
-    body="${template_body}${body:+$'\n\n'${body}}"
-  else
-    echo -n "  Body (blank to skip): " >/dev/tty; read -r body </dev/tty
-  fi
+  local tmp_issue body
+  tmp_issue=$(mktemp /tmp/gh-issue-body-XXXX.md)
+  [[ -n "$template_body" ]] && echo "$template_body" > "$tmp_issue"
+  local _ed="${EDITOR:-nano}"
+  [[ "$_ed" == *code* ]] && _ed="$_ed --wait"
+  ${=_ed} "$tmp_issue" </dev/tty >/dev/tty
+  body=$(awk 'NF{found=NR} {lines[NR]=$0} END{for(i=1;i<=found;i++) print lines[i]}' "$tmp_issue")
+  rm -f "$tmp_issue"
 
   _gh_ensure_labels
   local _label_list _selected_labels
