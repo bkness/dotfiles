@@ -234,6 +234,7 @@ _shell_close() {
   [[ $count -lt 0 ]] && count=0
   echo $count > ~/.shell_count
   [[ $count -le 0 ]] && offline
+  rm -f ~/.cache/forged/workmode-state
 }
 
 register_hook "on_exit" "_shell_close"
@@ -368,6 +369,8 @@ end tell
 FOCUS
 
   rm /tmp/workmode.lock
+  mkdir -p ~/.cache/forged
+  echo "active" > ~/.cache/forged/workmode-state
   echo "Workspace ready. Go get em. 🚀"
 } 
 
