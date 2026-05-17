@@ -23,6 +23,7 @@ _palette_entries() {
   _palette_row "newproj" "cmd" "Create a new project"
   _palette_row "quick_edit_readme" "cmd" "Edit README in current project"
   _palette_row "_explorer_widget" "widget" "Browse files (Ctrl+Q)"
+  _palette_row "_jump_widget" "widget" "Jump anywhere (Ctrl+J)"
   _palette_row "project_ui_widget" "widget" "Project dashboard"
 
   # --- Shell ---

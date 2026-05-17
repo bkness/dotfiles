@@ -176,6 +176,28 @@ j() {
   refresh-dev-cache
 }
 
+# desc: Ctrl+J — jump anywhere via zoxide picker without typing j first
+_jump_widget() {
+  zle -I
+  local dest
+  dest=$(zoxide query -l | fzf "${FZF_THEME[@]}" \
+    --height=50% \
+    --reverse \
+    --border=rounded \
+    --border-label="  ◈  Jump  " \
+    --prompt="  ❯ " \
+    --preview='eza -la --icons --color=always -1 {} 2>/dev/null' \
+    --preview-window=right:50%:wrap \
+    --color='border:#00ff41,label:#00ff41'
+  ) || { zle reset-prompt; return; }
+  cd "$dest"
+  add-recent
+  refresh-dev-cache
+  zle reset-prompt
+}
+zle -N _jump_widget
+bindkey '^J' _jump_widget
+
 #--------------------------------------
 # Fuzzy project picker — lists recent + cached projects, opens in one step
 #--------------------------------------
