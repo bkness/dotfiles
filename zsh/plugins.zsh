@@ -14,9 +14,9 @@ zstyle ':completion:*' completer _complete _ignored _approximate
 zinit ice wait lucid
 zinit light zsh-users/zsh-autosuggestions
 
-# Syntax must always be last  
+# Syntax must always be last
 zinit ice wait lucid
-zinit light zsh-users/zsh-syntax-highlighting
+zinit light zdharma-continuum/fast-syntax-highlighting
 
 
 # ---------------------------------------
