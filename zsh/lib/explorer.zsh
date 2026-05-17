@@ -5,6 +5,7 @@
 
 # desc: Ctrl+E file explorer with preview
 _explorer_widget() {
+  zle -I
   local current="$PWD"
 
   while true; do
@@ -48,12 +49,12 @@ _explorer_widget() {
           --preview-label='  ◈  Preview  '
     )
 
-    [[ $? -ne 0 ]] && return
+    [[ $? -ne 0 ]] && { zle reset-prompt; return; }
 
     local key item full_path
     key=$(head -1 <<< "$result")
     item=$(awk 'NR==2' <<< "$result")
-    [[ -z "$item" ]] && return
+    [[ -z "$item" ]] && { zle reset-prompt; return; }
 
     full_path=$(cut -f1 <<< "$item")
 
