@@ -324,7 +324,7 @@ _music_starship_update() {
       -e 'end tell' 2>/dev/null)
     mkdir -p ~/.cache/forged
     echo "$info" > ~/.cache/forged/music-now-playing
-  } &!
+  } >/dev/null 2>&1 &!
 }
 [[ ${precmd_functions[(r)_music_starship_update]} != _music_starship_update ]] && \
   precmd_functions+=(_music_starship_update)
