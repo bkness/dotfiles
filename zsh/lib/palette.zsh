@@ -59,6 +59,11 @@ _palette_entries() {
   _palette_row "gbr" "git" "Fuzzy switch any branch"
   _palette_row "nukebranches" "git" "Delete all remote branches except main/master"
 
+  # --- Govee ---
+  _palette_row "govee" "govee" "Interactive light controller (room + action picker)"
+  _palette_row "_govee_widget" "widget" "Govee picker inline (bound widget)"
+  _palette_row "goveestat" "govee" "Show all light states via local API"
+
   # --- GitHub ---
   _palette_row "ghui" "github" "GitHub dashboard (PRs, issues, repos, branches…)"
 
