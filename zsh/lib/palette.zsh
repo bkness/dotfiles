@@ -4,7 +4,7 @@
 # ---------------------------------------
 
 _palette_entries() {
-  local icon="◆"
+  local icon="■"
 
   _palette_row() {
     local cmd="$1"
@@ -19,7 +19,7 @@ _palette_entries() {
   _palette_row "pr" "cmd" "Pick project + open in editor"
   _palette_row "newproj" "cmd" "Create a new project"
   _palette_row "quick_edit_readme" "cmd" "Edit README in current project"
-  _palette_row "_explorer_widget" "cmd" "Browse files (Ctrl+E)"
+  _palette_row "_explorer_widget" "widget" "Browse files (Ctrl+E)"
 
   # --- Shell ---
   _palette_row "reload" "shell" "Restart shell (decrements counter)"
@@ -51,12 +51,7 @@ _palette_entries() {
   _palette_row "gl" "git" "git log (graph)"
 
   # --- GitHub ---
-  _palette_row "ghui" "github" "GitHub dashboard"
-  _palette_row "github_ui_prs" "github" "Pull requests"
-  _palette_row "github_ui_issues" "github" "Issues"
-  _palette_row "github_ui_repos" "github" "My repos"
-  _palette_row "github_ui_clone" "github" "Clone a repo"
-  _palette_row "github_ui_new" "github" "Create new repo"
+  _palette_row "ghui" "github" "GitHub dashboard (PRs, issues, repos, branches…)"
 
   # --- Dev utilities ---
   _palette_row "killport" "util" "Kill process on a port"
@@ -72,8 +67,6 @@ _palette_entries() {
   _palette_row "vared PLUGIN_REGISTRY" "debug" "Inspect plugin registry"
   _palette_row "vared _HOOKS" "debug" "Inspect hook registry"
   _palette_row "zprof" "debug" "Profile shell startup"
-  _palette_row "fmt_demo" "debug" "Show printf width/precision examples"
-  _palette_row "fmt_palette_tune" "debug" "Preview real palette rows at custom widths"
 
   # --- Live: registered plugins ---
   for key in ${(k)PLUGIN_REGISTRY}; do
@@ -212,7 +205,8 @@ _palette_widget() {
     _palette_entries \
     | fzf "${FZF_THEME[@]}" \
         --border=rounded \
-        --border-label='  ◈  COMMAND PALETTE  ' \
+        --border-label='  ■  COMMAND PALETTE  ' \
+        --color=label:#00ff00 \
         --prompt='  ❯ ' \
         --header='  Ctrl+P — your entire ecosystem' \
         --header-first \
@@ -234,16 +228,19 @@ _palette_widget() {
         --preview-label='  Info  '
   ) || return
 
-  # Extract the command (first column, strip emoji + leading space)
-  local cmd
+  local cmd category
   cmd=$(echo "$selected" | awk -F'│' '{print $1}' | sed 's/^[[:space:]]*[^ ]* *//' | xargs)
+  category=$(echo "$selected" | awk -F'│' '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print $2}')
 
   [[ -z "$cmd" ]] && return
 
-  # Put it in the buffer so user can confirm or edit before running
-  BUFFER="$cmd"
-  CURSOR=${#BUFFER}
-  zle redisplay
+  if [[ "$category" == "widget" ]]; then
+    zle "$cmd"
+  else
+    BUFFER="$cmd"
+    CURSOR=${#BUFFER}
+    zle redisplay
+  fi
 }
 
 zle -N _palette_widget
