@@ -305,6 +305,30 @@ music_ui_stations() {
   _MUSIC_MSG="  ♫  $(_music_now_playing)"
 }
 
+# Async starship cache update — runs in background on every prompt, zero latency
+_music_starship_update() {
+  {
+    local info
+    info=$(osascript \
+      -e 'tell application "Music"' \
+      -e '  set s to player state as string' \
+      -e '  try' \
+      -e '    if s is "playing" then' \
+      -e '      return name of current track & " — " & artist of current track' \
+      -e '    else' \
+      -e '      return ""' \
+      -e '    end if' \
+      -e '  on error' \
+      -e '    return ""' \
+      -e '  end try' \
+      -e 'end tell' 2>/dev/null)
+    mkdir -p ~/.cache/forged
+    echo "$info" > ~/.cache/forged/music-now-playing
+  } &!
+}
+[[ ${precmd_functions[(r)_music_starship_update]} != _music_starship_update ]] && \
+  precmd_functions+=(_music_starship_update)
+
 _music_widget() {
   zle -I
   _MUSIC_MSG=""
