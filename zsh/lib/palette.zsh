@@ -212,30 +212,56 @@ _palette_preview() {
 }
 
 _palette_widget() {
-  local selected _pal_tmp _cat_tmp _pick_script _filter_script
+  local selected _pal_tmp _cats_tmp _idx_tmp _cycle_script _filter_script _header_script
 
   _pal_tmp=$(mktemp /tmp/.palette-XXXX)
-  _cat_tmp=$(mktemp /tmp/.palette-cat-XXXX)
-  _pick_script=$(mktemp /tmp/.palette-pick-XXXX.sh)
+  _cats_tmp=$(mktemp /tmp/.palette-cats-XXXX)
+  _idx_tmp=$(mktemp /tmp/.palette-idx-XXXX)
+  _cycle_script=$(mktemp /tmp/.palette-cycle-XXXX.sh)
   _filter_script=$(mktemp /tmp/.palette-filter-XXXX.sh)
+  _header_script=$(mktemp /tmp/.palette-header-XXXX.sh)
 
   _palette_entries > "$_pal_tmp"
+  awk -F'│' '{gsub(/^[[:space:]]+|[[:space:]]+$/,"",$2); print $2}' "$_pal_tmp" | sort -u > "$_cats_tmp"
+  echo "0" > "$_idx_tmp"
 
-  cat > "$_pick_script" <<PICK
+  # Cycles the category index forward (wraps back to 0 = all)
+  cat > "$_cycle_script" <<CYCLE
 #!/bin/zsh
-_r=\$(awk -F'│' '{gsub(/^[[:space:]]+|[[:space:]]+$/,"",\$2);print \$2}' '${_pal_tmp}' | sort -u | fzf --prompt='  category ❯ ' --height=50% --border=rounded < /dev/tty)
-[[ -n "\$_r" ]] && echo "\$_r" > '${_cat_tmp}'
-PICK
+_cats=("\${(@f)\$(cat '${_cats_tmp}')}")
+_n=\${#_cats}
+_idx=\$(( \$(cat '${_idx_tmp}') + 1 ))
+(( _idx > _n )) && _idx=0
+echo "\$_idx" > '${_idx_tmp}'
+CYCLE
 
+  # Outputs filtered palette entries based on current index
   cat > "$_filter_script" <<FILTER
 #!/bin/zsh
-_c=\$(cat '${_cat_tmp}' 2>/dev/null | xargs)
-if [[ -n "\$_c" ]]; then
-  awk -F'│' -v f="\$_c" '{gsub(/^[[:space:]]+|[[:space:]]+$/,"",\$2); if (\$2 == f) print}' '${_pal_tmp}'
-else
+_idx=\$(cat '${_idx_tmp}' 2>/dev/null)
+if [[ "\$_idx" == "0" ]]; then
   cat '${_pal_tmp}'
+else
+  _cats=("\${(@f)\$(cat '${_cats_tmp}')}")
+  _cat="\${_cats[\$_idx]}"
+  awk -F'│' -v f="\$_cat" '{gsub(/^[[:space:]]+|[[:space:]]+\$/,"",\$2); if (\$2 == f) print}' '${_pal_tmp}'
 fi
 FILTER
+
+  # Outputs the correct header line based on current index
+  cat > "$_header_script" <<HEADER
+#!/bin/zsh
+_idx=\$(cat '${_idx_tmp}' 2>/dev/null)
+if [[ "\$_idx" == "0" ]]; then
+  echo "  Ctrl+P — browse  │  Ctrl+F — filter  │  Ctrl+X — reset"
+else
+  _cats=("\${(@f)\$(cat '${_cats_tmp}')}")
+  _cat="\${_cats[\$_idx]}"
+  echo "  ■ PALETTE — \${_cat}  │  Ctrl+F: next  │  Ctrl+X: reset"
+fi
+HEADER
+
+  local _cleanup="_pal_tmp _cats_tmp _idx_tmp _cycle_script _filter_script _header_script"
 
   selected=$(
     cat "$_pal_tmp" \
@@ -248,8 +274,8 @@ FILTER
         --header-first \
         --with-nth=1 \
         --delimiter='│' \
-        --bind "ctrl-f:execute(zsh '$_pick_script')+reload(zsh '$_filter_script')+change-header(  ■ PALETTE — filtered  │  Ctrl+X — reset all)" \
-        --bind "ctrl-x:execute(printf '' > '$_cat_tmp')+reload(cat '$_pal_tmp')+change-header(  Ctrl+P — browse  │  Ctrl+F — filter  │  Ctrl+X — reset)" \
+        --bind "ctrl-f:execute-silent(zsh '$_cycle_script')+reload(zsh '$_filter_script')+transform-header(zsh '$_header_script')" \
+        --bind "ctrl-x:execute-silent(echo 0 > '$_idx_tmp')+reload(cat '$_pal_tmp')+change-header(  Ctrl+P — browse  │  Ctrl+F — filter  │  Ctrl+X — reset)" \
         --preview='
           cmd=$(echo {} | awk -F"│" "{print \$1}" | sed "s/^[[:space:]]*[^ ]* *//" | xargs)
           cat=$(echo {} | awk -F"│" "{print \$2}" | xargs)
@@ -270,9 +296,9 @@ FILTER
         ' \
         --preview-window=right:50%:wrap \
         --preview-label='  Info  '
-  ) || { rm -f "$_pal_tmp" "$_cat_tmp" "$_pick_script" "$_filter_script"; return; }
+  ) || { rm -f "$_pal_tmp" "$_cats_tmp" "$_idx_tmp" "$_cycle_script" "$_filter_script" "$_header_script"; return; }
 
-  rm -f "$_pal_tmp" "$_cat_tmp" "$_pick_script" "$_filter_script"
+  rm -f "$_pal_tmp" "$_cats_tmp" "$_idx_tmp" "$_cycle_script" "$_filter_script" "$_header_script"
 
   local cmd category
   cmd=$(echo "$selected" | awk -F'│' '{print $1}' | sed 's/^[[:space:]]*[^ ]* *//' | xargs)
