@@ -721,9 +721,15 @@ github_ui_staging() {
     git add "$file" && echo "  ● Staged: $file"
   done
 
-  printf "\n  Commit message (blank to skip): " >/dev/tty
-  read -r msg </dev/tty || return
-  [[ -n "$msg" ]] && git commit -m "$msg" && _GH_MSG="  ✅ Committed: $msg"
+  echo -n "  Title: " >/dev/tty; read -r title </dev/tty
+  [[ -z "$title" ]] && return
+  echo -n "  Body (blank to skip): " >/dev/tty; read -r body </dev/tty
+
+  if [[ -n "$body" ]]; then
+    git commit -m "$title" -m "$body" && _GH_MSG="  ✅ Committed: $title"
+  else
+    git commit -m "$title" && _GH_MSG="  ✅ Committed: $title"
+  fi
 }
 
 # ── log ──────────────────────────────────────────────────────
