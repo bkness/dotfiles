@@ -723,7 +723,13 @@ github_ui_staging() {
 
   echo -n "  Title: " >/dev/tty; read -r title </dev/tty
   [[ -z "$title" ]] && return
-  echo -n "  Body (blank to skip): " >/dev/tty; read -r body </dev/tty
+
+  local tmp_body
+  tmp_body=$(mktemp /tmp/gh-commit-body-XXXX.md)
+  ${EDITOR:-nano} "$tmp_body" </dev/tty >/dev/tty
+  local body
+  body=$(grep -v '^\s*#' "$tmp_body" | sed '/./,$!d' | sed -e :a -e '/^\s*$/{$d;N;ba}')
+  rm -f "$tmp_body"
 
   if [[ -n "$body" ]]; then
     git commit -m "$title" -m "$body" && _GH_MSG="  ✅ Committed: $title"
