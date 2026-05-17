@@ -1,6 +1,7 @@
 # ---------------------------------------
 # Apple Music Widget — ♫
-# Ctrl+] to open | catalog search via Apple Music API + playback controls + stations
+# Alt+M to open | catalog search via Apple Music API + playback controls + stations
+# Note: ^M = Enter (reserved) — use ^[m (Alt+M) instead
 # Requires: APPLE_MUSIC_KEY_ID, APPLE_MUSIC_TEAM_ID, APPLE_MUSIC_KEY_PATH in ~/.secrets
 # ---------------------------------------
 
@@ -80,8 +81,31 @@ _music_now_playing() {
 }
 
 music_ui() {
-  local now_playing
-  now_playing=$(_music_now_playing)
+  # One combined call — state + loved status
+  local raw_state
+  raw_state=$(osascript \
+    -e 'tell application "Music"' \
+    -e '  set s to player state as string' \
+    -e '  try' \
+    -e '    set n to name of current track' \
+    -e '    set ar to artist of current track' \
+    -e '    set lv to loved of current track as string' \
+    -e '    return s & "|" & n & "|" & ar & "|" & lv' \
+    -e '  on error' \
+    -e '    return s & "|||false"' \
+    -e '  end try' \
+    -e 'end tell' 2>/dev/null)
+
+  local parts=("${(@s:|:)raw_state}")
+  local state="${parts[1]}" track_name="${parts[2]}" track_artist="${parts[3]}" loved="${parts[4]}"
+
+  local now_playing="■  Not playing"
+  local love_option="  ♥  Love Track"
+  if [[ "$state" == "playing" || "$state" == "paused" ]]; then
+    local icon="▶"; [[ "$state" == "paused" ]] && icon="⏸"
+    now_playing="$icon  $track_name — $track_artist"
+    [[ "$loved" == "true" ]] && love_option="  ♡  Unlove Track" || love_option="  ♥  Love Track"
+  fi
 
   local _preview_script
   _preview_script=$(mktemp /tmp/.music-preview-XXXX.sh)
@@ -96,7 +120,8 @@ raw=$(osascript \
   -e '    set al to album of current track' \
   -e '    set d to duration of current track as integer' \
   -e '    set p to player position as integer' \
-  -e '    return s & "|" & n & "|" & ar & "|" & al & "|" & d & "|" & p' \
+  -e '    set lv to loved of current track as string' \
+  -e '    return s & "|" & n & "|" & ar & "|" & al & "|" & d & "|" & p & "|" & lv' \
   -e '  on error' \
   -e '    return s' \
   -e '  end try' \
@@ -112,14 +137,16 @@ artist="${parts[3]}"
 album="${parts[4]}"
 dur="${parts[5]:-0}"
 pos="${parts[6]:-0}"
+loved="${parts[7]}"
 
 icon="▶"; [[ "$state" == "paused" ]] && icon="⏸"
+heart="♡"; [[ "$loved" == "true" ]] && heart="♥"
 
 dmin=$(( dur / 60 )); dsec=$(( dur % 60 ))
 pmin=$(( pos / 60 )); psec=$(( pos % 60 ))
 
-printf "\n  %s  %s\n\n  Artist   %s\n  Album    %s\n  Time     %d:%02d / %d:%02d\n" \
-  "$icon" "$name" "$artist" "$album" "$pmin" "$psec" "$dmin" "$dsec"
+printf "\n  %s  %s\n\n  Artist   %s\n  Album    %s\n  Time     %d:%02d / %d:%02d\n  Loved    %s\n" \
+  "$icon" "$name" "$artist" "$album" "$pmin" "$psec" "$dmin" "$dsec" "$heart"
 PREVIEW
   chmod +x "$_preview_script"
 
@@ -128,6 +155,7 @@ PREVIEW
     "  ▶/⏸  Play/Pause" \
     "  ⏭   Next Track" \
     "  ⏮   Previous Track" \
+    "$love_option" \
     "  🔍  Search Catalog" \
     "  🎵  Stations" \
     | fzf "${FZF_THEME[@]}" \
@@ -161,16 +189,35 @@ PREVIEW
       sleep 0.8
       _MUSIC_MSG="  ⏮  $(_music_now_playing)"
       ;;
-    "🔍  Search Catalog")   music_ui_search ;;
-    "🎵  Stations")          music_ui_stations ;;
+    "♥  Love Track")
+      osascript -e 'tell application "Music" to set loved of current track to true'
+      _MUSIC_MSG="  ♥  Loved: $track_name"
+      ;;
+    "♡  Unlove Track")
+      osascript -e 'tell application "Music" to set loved of current track to false'
+      _MUSIC_MSG="  ♡  Unloved: $track_name"
+      ;;
+    "🔍  Search Catalog") music_ui_search ;;
+    "🎵  Stations")        music_ui_stations ;;
   esac
 }
 
 music_ui_search() {
+  # fzf as input box — stays in fzf, no terminal drop
+  local fzf_out fzf_exit
+  fzf_out=$(: | fzf "${FZF_THEME[@]}" \
+    --print-query \
+    --border=rounded \
+    --border-label='  ♫  SEARCH  ' \
+    --color=label:#00ff00 \
+    --prompt='  ❯ ' \
+    --header='  Type to search · Enter to search · Esc to cancel' \
+    --header-first \
+    --height=20%)
+  fzf_exit=$?
   local query
-  echo -n "  Search: " >/dev/tty
-  read -r query </dev/tty
-  [[ -z "$query" ]] && return
+  query=$(echo "$fzf_out" | head -1 | xargs 2>/dev/null)
+  [[ $fzf_exit -eq 130 || -z "$query" ]] && return
 
   local token
   token=$(_music_token) || { _MUSIC_MSG="  ❌ Token error — check APPLE_MUSIC_* in ~/.secrets"; return 1; }
@@ -251,8 +298,9 @@ _music_widget() {
   _MUSIC_MSG=""
   { music_ui } always {
     zle reset-prompt
+    zle -R
     [[ -n "$_MUSIC_MSG" ]] && zle -M "$_MUSIC_MSG"
   }
 }
 zle -N _music_widget
-bindkey '^]' _music_widget
+bindkey '^[m' _music_widget
