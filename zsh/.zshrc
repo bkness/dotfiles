@@ -3,6 +3,7 @@
 # ---------------------------------------
 export PATH="/opt/homebrew/bin:$PATH"
 export PATH="/usr/local/share/dotnet:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
 
 source ~/.local/share/zinit/zinit.git/zinit.zsh
 source ~/dev/dotfiles/zsh/plugins.zsh
@@ -59,7 +60,6 @@ zinit light-mode for \
     zdharma-continuum/zinit-annex-rust
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-export PATH="$HOME/.local/bin:$PATH"
 
 # Track shell count — auto online/offline (guard prevents sz/source from double-incrementing)
 [[ -z "$_SHELL_REGISTERED" ]] && { _SHELL_REGISTERED=1; _shell_open; }
