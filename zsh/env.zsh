@@ -3,7 +3,6 @@
 # ---------------------------------------
 
 export EDITOR="code"
-export VISUAL="code"
 
 export PATH="$HOME/.local/bin:$PATH"
 
