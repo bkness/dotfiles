@@ -226,6 +226,46 @@ pr() {
   refresh-dev-cache
 }
 
+# ---------------------------------------
+# gcm — AI commit message generator
+# ---------------------------------------
+
+# desc: Generate a conventional commit message from staged diff
+gcm() {
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "❌ Not inside a git repo"
+    return 1
+  fi
+
+  local diff
+  diff=$(git diff --staged)
+
+  if [[ -z "$diff" ]]; then
+    echo "❌ No staged changes. Run 'git add <files>' first."
+    return 1
+  fi
+
+  echo "$diff" | python3 ~/dev/dotfiles/scripts/gcm.py "$@"
+}
+
+# desc: Generate a PR title + body from staged diff
+gcmpr() {
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "❌ Not inside a git repo"
+    return 1
+  fi
+
+  local diff
+  diff=$(git diff HEAD)
+
+  if [[ -z "$diff" ]]; then
+    echo "❌ No changes found (comparing to HEAD)"
+    return 1
+  fi
+
+  echo "$diff" | python3 ~/dev/dotfiles/scripts/gcm.py --pr
+}
+
 # Ensure DEV_ROOT is set
 if [[ -z "$DEV_ROOT" ]]; then
   echo "❌ DEV_ROOT is not set. Please export DEV_ROOT to your projects directory."

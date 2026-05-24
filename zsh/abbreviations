@@ -15,6 +15,7 @@ abbr "gc"="git commit"
 abbr "gca"="git commit -a -m"
 abbr "gco"="git checkout"
 abbr "ghui"="github_ui"
+abbr "gcl"='git clone $(pbpaste)'
 abbr "gl"="git log --oneline --graph --decorate"
 abbr "goveestat"="curl -s http://localhost:8000/lights/ -H \"x-api-key: \$GOVEE_SERVER_KEY\" | python3 -m json.tool"
 abbr "gp"="git push"
