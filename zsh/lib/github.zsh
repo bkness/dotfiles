@@ -739,11 +739,44 @@ github_ui_staging() {
     git add "$file" && echo "  ● Staged: $file"
   done
 
-  echo -n "  Title: " >/dev/tty; read -r title </dev/tty
+  # Title mode — AI or manual
+  local title_mode
+  title_mode=$(printf '%s\n' \
+    "  🤖  Generate with AI" \
+    "  ✏️   Type manually" \
+    | fzf "${FZF_THEME[@]}" \
+        --border=rounded \
+        --border-label='  ◈  COMMIT MESSAGE  ' \
+        --prompt='  ❯ ' \
+        --height=20%) || return
+
+  local title ai_body=""
+
+  if [[ "${title_mode##  }" == "🤖  Generate with AI" ]]; then
+    echo "  ⠿  Generating commit message…" >/dev/tty
+    local ai_msg
+    ai_msg=$(git diff --staged | python3 ~/dev/dotfiles/scripts/gcm.py 2>/dev/null)
+    if [[ -z "$ai_msg" ]]; then
+      echo "  ❌ AI generation failed — enter title manually" >/dev/tty
+    else
+      title=$(echo "$ai_msg" | head -1)
+      ai_body=$(echo "$ai_msg" | tail -n +3)   # skip title + blank line
+      echo "  ✨ $title" >/dev/tty
+      echo -n "  Override? (enter to keep): " >/dev/tty
+      read -r override </dev/tty
+      [[ -n "$override" ]] && title="$override"
+    fi
+  fi
+
+  # Manual fallback (or if AI failed)
+  if [[ -z "$title" ]]; then
+    echo -n "  Title: " >/dev/tty; read -r title </dev/tty
+  fi
   [[ -z "$title" ]] && return
 
   local tmp_body
   tmp_body=$(mktemp /tmp/gh-commit-body-XXXX.md)
+  [[ -n "$ai_body" ]] && echo "$ai_body" > "$tmp_body"
   local _ed="${EDITOR:-nano}"
   [[ "$_ed" == *code* ]] && _ed="$_ed --wait"
   ${=_ed} "$tmp_body" </dev/tty >/dev/tty
