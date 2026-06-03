@@ -16,20 +16,20 @@ import sys
 
 CLAUDE_BIN = os.path.expanduser("~/.local/bin/claude")
 
-COMMIT_PROMPT = """\
+COMMIT_PROMPT_BASE = """\
 You are an expert software engineer writing git commit messages.
 Output ONLY the commit message — no explanation, no markdown, no code fences.
 
 Follow the Conventional Commits spec:
   <type>(<scope>): <short summary>
 
-  [optional body — bullet points, 72-char wrap]
+  [body — bullet points, 72-char wrap]
 
 Rules:
 - type must be one of: feat, fix, refactor, style, docs, test, chore, perf, ci, build
 - scope is optional but use it when it's obvious (e.g. auth, kanban, navbar)
 - summary: imperative mood, lowercase, no period, ≤72 chars
-- body: only if meaningful extra context exists; use "- " bullets
+- {body_rule}
 - Do NOT include anything other than the commit message itself
 
 Write a commit message for this diff:
@@ -76,7 +76,18 @@ def main():
     label = "PR description" if pr_mode else "commit message"
     print(f"⠿  Generating {label}…", file=sys.stderr)
 
-    prompt = (PR_PROMPT if pr_mode else COMMIT_PROMPT) + diff
+    if pr_mode:
+        prompt = PR_PROMPT + diff
+    else:
+        file_count = diff.count("\ndiff --git ") + (1 if diff.startswith("diff --git ") else 0)
+        line_count = diff.count("\n")
+        require_body = file_count > 1 or line_count > 40
+        body_rule = (
+            'body: REQUIRED — one "- " bullet per meaningful change, focused on the why'
+            if require_body
+            else 'body: only if meaningful extra context exists; use "- " bullets'
+        )
+        prompt = COMMIT_PROMPT_BASE.format(body_rule=body_rule) + diff
 
     result = subprocess.run(
         [CLAUDE_BIN, "-p", prompt],

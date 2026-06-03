@@ -374,3 +374,93 @@ FOCUS
   echo "Workspace ready. Go get em. 🚀"
 } 
 
+gfix() {
+  emulate -L zsh
+  setopt pipefail
+
+  echo "== status =="
+  git status
+
+  local gitdir
+  gitdir="$(git rev-parse --absolute-git-dir 2>/dev/null)" || {
+    echo "Not in a git repo"
+    return 1
+  }
+
+  local conflicts
+  conflicts="$(git diff --name-only --diff-filter=U git diff --check rm -r $MAIN)"
+
+  if [[ -n "$conflicts" ]]; then
+    echo
+    echo "Unresolved conflicts:"
+    echo "$conflicts"
+    echo
+    echo "Resolve + git add files, then run gfix again."
+    return 1
+  fi
+
+  if [[ -d "$gitdir/rebase-merge" || -d "$gitdir/rebase-apply" ]]; then
+    echo "Rebase in progress -> continuing..."
+    git rebase --continue
+    return $?
+  fi
+
+  if [[ -f "$gitdir/MERGE_HEAD" ]]; then
+    echo "Merge in progress -> continuing..."
+    git merge --continue
+    return $?
+  fi
+
+  echo "No rebase/merge in progress and no unresolved conflicts."
+  return 0
+}
+
+gundo() {
+  emulate -L zsh
+  setopt pipefail
+
+  local gitdir
+  gitdir="$(git rev-parse --absolute-git-dir 2>/dev/null)" || {
+    echo "Not in a git repo"
+    return 1
+  }
+
+  if [[ -d "$gitdir/rebase-merge" || -d "$gitdir/rebase-apply" ]]; then
+    echo "Rebase in progress -> aborting..."
+    git rebase --abort
+    return $?
+  fi
+
+  if [[ -f "$gitdir/MERGE_HEAD" ]]; then
+    echo "Merge in progress -> aborting..."
+    git merge --abort
+    return $?
+  fi
+
+  echo "No rebase/merge in progress to abort."
+  return 0
+}
+
+gsync() {
+  emulate -L zsh
+  setopt pipefail
+
+  echo "== pulling =="
+  git pull || return $?
+
+  local conflicts
+  conflicts="$(git diff --name-only --diff-filter=U)"
+
+  if [[ -n "$conflicts" ]]; then
+    echo
+    echo "Conflicts detected:"
+    echo "$conflicts"
+    echo
+    echo "Resolve + git add files, then run gfix."
+    return 1
+  fi
+
+  echo
+  echo "== status =="
+  git status
+}
