@@ -143,12 +143,12 @@ cb() {
   add-recent
 }
 
-# desc: Change to main or master branch
+# desc: Change to main or master branch and pull latest
 cm() {
   if git show-ref --verify --quiet refs/heads/main; then
-    git switch main
+    git switch main && git pull
   elif git show-ref --verify --quiet refs/heads/master; then
-    git switch master
+    git switch master && git pull
   else
     echo "No main or master branch found"
   fi
