@@ -17,6 +17,13 @@ _gh_sync_completions &!
 # Helpers
 # ---------------------------------------
 
+_fzf() {
+  fzf "${FZF_THEME[@]}" \
+    --border=rounded \
+    --prompt='  ❯ ' \
+    "$@"
+}
+
 _open_url() {
   if [[ "$OSTYPE" == darwin* ]]; then
     open "$1"
@@ -100,7 +107,7 @@ _gh_repo_label() {
     || echo "Global"
 }
 
-typeset -gA _GH_LABELS_DONE
+typeset -gA _GH_LABELS_DONE _GH_PROJECT_SKIP
 
 # Ensure standard labels exist on the repo — runs once per repo per session
 _gh_ensure_labels() {
@@ -135,13 +142,17 @@ _gh_ensure_labels() {
 _FORGED_PROJECTS_CACHE="${XDG_CONFIG_HOME:-$HOME/.config}/forged/projects"
 _GH_PROJECT_ERR_LOG="${XDG_CACHE_HOME:-$HOME/.cache}/forged/project-errors.log"
 
-# Ensure the project scope is available — prompt once if not
+# Ensure the project scope is available — once per repo per session
 _gh_ensure_project_scope() {
-  local err rc
-  err=$(gh api graphql -f query='{ viewer { projectsV2(first:1) { nodes { id } } } }' 2>&1)
-  rc=$?
-  # err captured so raw gh output doesn't leak to terminal; caller surfaces the fix message
-  return $rc
+  local repo
+  repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null) || return 1
+  [[ -n "${_GH_PROJECT_SKIP[$repo]}" ]] && return 1
+  if ! gh api graphql -f query='{ viewer { projectsV2(first:1) { nodes { id } } } }' \
+      --silent >/dev/null 2>&1; then
+    _GH_PROJECT_SKIP[$repo]=1
+    echo "  ⚠️  Missing 'project' scope — run: gh auth refresh -s project" >&2
+    return 1
+  fi
 }
 
 # Returns project node ID for current repo, auto-creating if needed
@@ -358,8 +369,7 @@ github_ui() {
     "  🗂   My Repos" \
     "  📥  Clone Repo" \
     "  🆕  Create Repo" \
-    | fzf "${FZF_THEME[@]}" \
-        --border=rounded \
+    | _fzf \
         --border-label='  ◈  GITHUB  ' \
         --header="$header" \
         --header-first \
@@ -397,8 +407,7 @@ github_ui_repos() {
     --json name,isPrivate,description \
     --jq '.[] | (if .isPrivate then "🔒" else "🌐" end) + "  " + .name + "  \t" + (.description // "")' \
     | column -t -s $'\t' \
-    | fzf "${FZF_THEME[@]}" \
-          --border=rounded \
+    | _fzf \
           --border-label='  ◈  MY REPOS  ' \
           --prompt='  ❯ ' \
           --preview='gh repo view $(echo {} | awk "{print \$2}") 2>/dev/null' \
@@ -414,8 +423,7 @@ github_ui_repos() {
     "  📥  Clone" \
     "  👁   View" \
     "  ← back" \
-    | fzf "${FZF_THEME[@]}" \
-        --border=rounded \
+    | _fzf \
         --border-label='  ◈  ACTION  ' \
         --prompt='  ❯ ' \
         --height=30%) || return
@@ -439,8 +447,7 @@ github_ui_prs() {
       --json number,title,author,headRefName \
       --jq '.[] | "#" + (.number | tostring) + "  " + .title + "\t" + .author.login + " → " + .headRefName' \
       | column -t -s $'\t'; } \
-      | fzf "${FZF_THEME[@]}" \
-            --border=rounded \
+      | _fzf \
             --border-label='  ◈  PULL REQUESTS  ' \
             --prompt='  ❯ ' \
             --preview='n=$(echo {} | grep -o "^#[0-9]*" | tr -d "#"); [[ -n "$n" ]] && gh pr view "$n" 2>/dev/null || echo "  Return to main menu"' \
@@ -460,8 +467,7 @@ github_ui_prs() {
       "  ✅  Merge" \
       "  ❌  Close" \
       "  ← back" \
-      | fzf "${FZF_THEME[@]}" \
-          --border=rounded \
+      | _fzf \
           --border-label='  ◈  ACTION  ' \
           --prompt='  ❯ ' \
           --height=30%) || continue
@@ -485,8 +491,7 @@ github_ui_issues() {
       "  📋  List Issues" \
       "  🆕  Create Issue" \
       "  ← back" \
-      | fzf "${FZF_THEME[@]}" \
-          --border=rounded \
+      | _fzf \
           --border-label='  ◈  ISSUES  ' \
           --prompt='  ❯ ' \
           --height=25%) || return
@@ -500,8 +505,7 @@ github_ui_issues() {
         --json number,title,assignees,labels \
         --jq '.[] | "#" + (.number | tostring) + "  " + .title + "\t" + (if (.assignees | length) > 0 then .assignees[0].login else "unassigned" end) + "  " + (.labels | map(.name) | join(", "))' \
         | column -t -s $'\t'; } \
-        | fzf "${FZF_THEME[@]}" \
-              --border=rounded \
+        | _fzf \
               --border-label='  ◈  ISSUES  ' \
               --prompt='  ❯ ' \
               --preview='n=$(echo {} | grep -o "^#[0-9]*" | tr -d "#"); [[ -n "$n" ]] && gh issue view "$n" 2>/dev/null || echo "  Return to issues menu"' \
@@ -525,8 +529,7 @@ github_ui_issues() {
         "  ✅  Close" \
         "  💬  Comment" \
         "  ← back" \
-        | fzf "${FZF_THEME[@]}" \
-            --border=rounded \
+        | _fzf \
             --border-label='  ◈  ACTION  ' \
             --prompt='  ❯ ' \
             --height=40%) || continue
@@ -538,8 +541,7 @@ github_ui_issues() {
         "🌿  Start Branch")
           local branch_type
           branch_type=$(printf '%s\n' "  fix" "  feature" "  chore" \
-            | fzf "${FZF_THEME[@]}" \
-                --border=rounded \
+            | _fzf \
                 --border-label='  ◈  BRANCH TYPE  ' \
                 --prompt='  ❯ ' \
                 --height=25%) || continue
@@ -558,8 +560,7 @@ github_ui_issues() {
         "🏷   Label")
           local label
           label=$(gh label list --json name --jq '.[].name' 2>/dev/null \
-            | fzf "${FZF_THEME[@]}" \
-                --border=rounded \
+            | _fzf \
                 --border-label='  ◈  LABEL  ' \
                 --prompt='  ❯ ' \
                 --height=40%) || continue
@@ -600,8 +601,7 @@ github_ui_new() {
 
   local vis
   vis=$(printf '%s\n' "  private" "  public" \
-    | fzf "${FZF_THEME[@]}" \
-        --border=rounded \
+    | _fzf \
         --border-label='  ◈  VISIBILITY  ' \
         --prompt='  ❯ ' \
         --height=25%) || return
@@ -626,8 +626,7 @@ github_ui_clone() {
     --json name,description \
     --jq '.[] | .name + "\t" + (.description // "")' \
     | column -t -s $'\t' \
-    | fzf "${FZF_THEME[@]}" \
-          --border=rounded \
+    | _fzf \
           --border-label='  ◈  CLONE  ' \
           --prompt='  ❯ ' \
           --preview='gh repo view $(echo {} | awk "{print \$1}") 2>/dev/null' \
@@ -666,8 +665,7 @@ github_ui_branches() {
       "  🌱  Create" \
       "  🗑   Delete" \
       "  ← back" \
-      | fzf "${FZF_THEME[@]}" \
-          --border=rounded \
+      | _fzf \
           --border-label='  ◈  BRANCHES  ' \
           --prompt='  ❯ ' \
           --height=30%) || return
@@ -681,9 +679,8 @@ github_ui_branches() {
           | grep -v '^\*' \
           | sed 's|^[* ]*||' \
           | sort -u; } \
-          | fzf "${FZF_THEME[@]}" \
+          | _fzf \
               --ansi \
-              --border=rounded \
               --border-label='  ◈  SWITCH  ' \
               --prompt='  ❯ ' \
               --preview='git log --oneline --graph --color=always {-1} 2>/dev/null | head -20' \
@@ -710,8 +707,7 @@ github_ui_branches() {
           | grep -v '^\*' \
           | sed 's/^[* ]*//' \
           | grep -v "^${default_branch}$"; } \
-          | fzf "${FZF_THEME[@]}" \
-              --border=rounded \
+          | _fzf \
               --border-label='  ◈  DELETE  ' \
               --prompt='  ❯ ' \
               --preview='git log --oneline --color=always {-1} | head -10' \
@@ -751,8 +747,7 @@ github_ui_staging() {
 
   local selected
   selected=$(echo "$unstaged" \
-    | fzf "${FZF_THEME[@]}" \
-        --border=rounded \
+    | _fzf \
         --border-label='  ◈  STAGE  ' \
         --prompt='  ❯ ' \
         --multi \
@@ -772,8 +767,7 @@ github_ui_staging() {
   title_mode=$(printf '%s\n' \
     "  🤖  Generate with AI" \
     "  ✏️   Type manually" \
-    | fzf "${FZF_THEME[@]}" \
-        --border=rounded \
+    | _fzf \
         --border-label='  ◈  COMMIT MESSAGE  ' \
         --prompt='  ❯ ' \
         --height=20%) || return
@@ -823,10 +817,9 @@ github_ui_staging() {
 github_ui_log() {
   local selected hash
   selected=$(git log --oneline --graph --color=always \
-    | fzf "${FZF_THEME[@]}" \
+    | _fzf \
         --ansi \
         --no-sort \
-        --border=rounded \
         --border-label='  ◈  LOG  ' \
         --prompt='  ❯ ' \
         --preview='git show --color=always $(echo {} | grep -oE "[a-f0-9]{6,}" | head -1) 2>/dev/null' \
@@ -846,8 +839,7 @@ github_ui_messages() {
       "  🔔  Notifications" \
       "  💬  Discussions" \
       "  ← back" \
-      | fzf "${FZF_THEME[@]}" \
-          --border=rounded \
+      | _fzf \
           --border-label='  ◈  MESSAGES  ' \
           --prompt='  ❯ ' \
           --height=25%) || return
@@ -866,8 +858,7 @@ github_ui_messages() {
         local selected
         selected=$({ printf '%s\n' "  ← back"; echo "$raw_notifs" \
           | sed 's/§.*//' | column -t -s $'\t'; } \
-          | fzf "${FZF_THEME[@]}" \
-              --border=rounded \
+          | _fzf \
               --border-label='  ◈  NOTIFICATIONS  ' \
               --prompt='  ❯ ' \
               --preview='echo {} | awk "{t=\$2; r=\$3; ttl=\"\"; for(i=4;i<=NF;i++) ttl=ttl(i>4?\" \":\"\") \$i; printf \"  %-8s %s\n  %-8s %s\n  %-8s %s\n\", \"Type:\", t, \"Repo:\", r, \"Title:\", ttl}"' \
@@ -902,8 +893,7 @@ github_ui_messages() {
           }" \
           --jq '.data.repository.discussions.nodes[] | "#\(.number)  \(.author.login)  \(.title)"' \
           2>/dev/null; } \
-          | fzf "${FZF_THEME[@]}" \
-              --border=rounded \
+          | _fzf \
               --border-label='  ◈  DISCUSSIONS  ' \
               --prompt='  ❯ ' \
               --preview-window=right:55%:wrap) || continue
@@ -933,8 +923,7 @@ _github_create_issue() {
   if [[ -n "$_templates" ]]; then
     local _tpl
     _tpl=$(printf '%s\n' ${(f)_templates} "No template" \
-      | fzf "${FZF_THEME[@]}" \
-          --border=rounded \
+      | _fzf \
           --border-label='  ◈  TEMPLATE  ' \
           --prompt='  ❯ ' \
           --height=30% \
@@ -963,9 +952,8 @@ _github_create_issue() {
   _label_list=$(gh label list --json name --jq '.[].name' 2>/dev/null)
   if [[ -n "$_label_list" ]]; then
     _selected_labels=$(printf '%s\n' "${(f)_label_list}" \
-      | fzf "${FZF_THEME[@]}" \
+      | _fzf \
           --multi \
-          --border=rounded \
           --border-label='  ◈  LABELS  ' \
           --prompt='  ❯ ' \
           --height=40% \
@@ -978,8 +966,7 @@ _github_create_issue() {
   _collabs=$(gh api "repos/${_repo}/collaborators" --jq '.[].login' 2>/dev/null)
   _collab_list=$(printf '%s\n' "@me" ${(f)_collabs} | grep -v '^$' | sort -u)
   assignee=$(printf '%s\n' "${(f)_collab_list}" \
-    | fzf "${FZF_THEME[@]}" \
-        --border=rounded \
+    | _fzf \
         --border-label='  ◈  ASSIGNEE  ' \
         --prompt='  ❯ ' \
         --height=30% \
@@ -1001,8 +988,7 @@ _github_create_issue() {
   # Offer to create a branch tied to the issue
   local branch_type
   branch_type=$(printf '%s\n' "  fix" "  feature" "  chore" \
-    | fzf "${FZF_THEME[@]}" \
-        --border=rounded \
+    | _fzf \
         --border-label='  ◈  START BRANCH  ' \
         --prompt='  ❯ ' \
         --height=25% \
