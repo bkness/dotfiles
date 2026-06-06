@@ -54,11 +54,13 @@ _gh_default_branch() {
   local branch
   branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
   if [[ -z "$branch" ]]; then
-    if git show-ref --verify --quiet refs/remotes/origin/main 2>/dev/null; then
-      branch=main
-    elif git show-ref --verify --quiet refs/remotes/origin/master 2>/dev/null; then
-      branch=master
-    fi
+    local b
+    for b in main master trunk develop; do
+      if git show-ref --verify --quiet "refs/remotes/origin/$b" 2>/dev/null; then
+        branch="$b"
+        break
+      fi
+    done
   fi
   echo "$branch"
 }
@@ -151,8 +153,10 @@ _gh_get_or_create_project() {
   touch "$_FORGED_PROJECTS_CACHE"
 
   # Return cached ID if present (head -1 guards against duplicate entries from async writes)
+  # A value of SKIP means creation was previously blocked (org permissions) — bail silently
   local cached
   cached=$(grep "^${repo}=" "$_FORGED_PROJECTS_CACHE" 2>/dev/null | cut -d= -f2 | head -1)
+  [[ "$cached" == "SKIP" ]] && return 1
   [[ -n "$cached" ]] && echo "$cached" && return 0
 
   _gh_ensure_project_scope \
@@ -192,14 +196,21 @@ _gh_get_or_create_project() {
     --jq '.data.repositoryOwner.id' 2>/dev/null)
   [[ -z "$owner_id" ]] && { echo "failed to get owner id for $owner" >&2; return 1; }
 
-  local new_id
-  new_id=$(gh api graphql -f query="
+  local new_id create_err
+  create_err=$(gh api graphql -f query="
     mutation {
       createProjectV2(input: { ownerId: \"$owner_id\", title: \"$repo_name\" }) {
         projectV2 { id }
       }
-    }" --jq '.data.createProjectV2.projectV2.id' 2>/dev/null)
-  [[ -z "$new_id" ]] && { echo "failed to create project board for $repo_name" >&2; return 1; }
+    }" 2>&1)
+  new_id=$(echo "$create_err" | jq -r '.data.createProjectV2.projectV2.id // empty' 2>/dev/null)
+
+  if [[ -z "$new_id" ]]; then
+    # Org may restrict project creation — cache a skip sentinel so we stop retrying
+    echo "${repo}=SKIP" >> "$_FORGED_PROJECTS_CACHE"
+    echo "project board creation blocked (org permissions?) — board sync disabled for $repo" >&2
+    return 1
+  fi
 
   # Link the repo to the project so issues appear automatically
   local repo_node_id
@@ -554,7 +565,7 @@ github_ui_issues() {
         "✅  Close")           _gh_confirm "Close issue #$number?" && gh issue close "$number" && _GH_MSG="  ✅ Closed issue #$number" ;;
         "💬  Comment")
           local tmp_comment body
-          tmp_comment=$(mktemp /tmp/gh-issue-comment-XXXX.md)
+          tmp_comment=$(mktemp -t gh-issue-comment)
           local _ed="${EDITOR:-nano}"
           [[ "$_ed" == *code* ]] && _ed="$_ed --wait"
           ${=_ed} "$tmp_comment" </dev/tty >/dev/tty
@@ -578,8 +589,6 @@ github_ui_push_commit() {
     _GH_MSG="  ❌ Failed to push $branch"
   fi
 }
-
-github_ui_issues_create() { _github_create_issue }
 
 github_ui_new() {
   local name
@@ -791,7 +800,7 @@ github_ui_staging() {
   [[ -z "$title" ]] && return
 
   local tmp_body
-  tmp_body=$(mktemp /tmp/gh-commit-body-XXXX.md)
+  tmp_body=$(mktemp -t gh-commit-body)
   [[ -n "$ai_body" ]] && echo "$ai_body" > "$tmp_body"
   local _ed="${EDITOR:-nano}"
   [[ "$_ed" == *code* ]] && _ed="$_ed --wait"
@@ -938,7 +947,7 @@ _github_create_issue() {
   fi
 
   local tmp_issue body
-  tmp_issue=$(mktemp /tmp/gh-issue-body-XXXX.md)
+  tmp_issue=$(mktemp -t gh-issue-body)
   [[ -n "$template_body" ]] && echo "$template_body" > "$tmp_issue"
   local _ed="${EDITOR:-nano}"
   [[ "$_ed" == *code* ]] && _ed="$_ed --wait"
@@ -1014,7 +1023,7 @@ github_ui_open_pr() {
   [[ -z "$title" ]] && title="$branch"
 
   local tmp_pr_body body
-  tmp_pr_body=$(mktemp /tmp/gh-pr-body-XXXX.md)
+  tmp_pr_body=$(mktemp -t gh-pr-body)
   [[ -n "$number" ]] && printf "Closes #%s\n\n" "$number" > "$tmp_pr_body"
   local _ed="${EDITOR:-nano}"
   [[ "$_ed" == *code* ]] && _ed="$_ed --wait"
