@@ -17,6 +17,22 @@ _gh_sync_completions &!
 # Helpers
 # ---------------------------------------
 
+_open_url() {
+  if [[ "$OSTYPE" == darwin* ]]; then
+    open "$1"
+  else
+    xdg-open "$1" 2>/dev/null &!
+  fi
+}
+
+_stat_mtime() {
+  if [[ "$OSTYPE" == darwin* ]]; then
+    stat -f %m "$1" 2>/dev/null
+  else
+    stat -c %Y "$1" 2>/dev/null
+  fi
+}
+
 _gh_check() {
   command -v gh >/dev/null && return 0
   echo "❌ gh CLI not found. Install: brew install gh" >&2
@@ -57,7 +73,7 @@ _gh_stale_warning() {
   local git_dir
   git_dir=$(git rev-parse --git-dir 2>/dev/null)
   local last_fetch
-  last_fetch=$(stat -f %m "$git_dir/FETCH_HEAD" 2>/dev/null)
+  last_fetch=$(_stat_mtime "$git_dir/FETCH_HEAD")
   last_fetch=${last_fetch:-0}
   if (( $(date +%s) - last_fetch > 300 )); then
     git fetch origin "$default_branch" --quiet 2>/dev/null
@@ -852,7 +868,7 @@ github_ui_messages() {
           's|https://api\.github\.com/repos/|https://github.com/|;
            s|/pulls/|/pull/|;
            s|/commits/|/commit/|')
-        [[ -n "$web_url" ]] && open "$web_url"
+        [[ -n "$web_url" ]] && _open_url "$web_url"
         gh api -X PATCH "notifications/threads/$notif_id" >/dev/null 2>&1
         ;;
       "💬  Discussions")
