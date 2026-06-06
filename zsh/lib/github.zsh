@@ -137,8 +137,11 @@ _GH_PROJECT_ERR_LOG="${XDG_CACHE_HOME:-$HOME/.cache}/forged/project-errors.log"
 
 # Ensure the project scope is available — prompt once if not
 _gh_ensure_project_scope() {
-  gh api graphql -f query='{ viewer { projectsV2(first:1) { nodes { id } } } }' \
-    --silent >/dev/null 2>&1
+  local err rc
+  err=$(gh api graphql -f query='{ viewer { projectsV2(first:1) { nodes { id } } } }' 2>&1)
+  rc=$?
+  # err captured so raw gh output doesn't leak to terminal; caller surfaces the fix message
+  return $rc
 }
 
 # Returns project node ID for current repo, auto-creating if needed
