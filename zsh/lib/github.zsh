@@ -109,11 +109,20 @@ _gh_repo_label() {
 
 typeset -gA _GH_LABELS_DONE _GH_PROJECT_SKIP
 
-# Ensure standard labels exist on the repo — runs once per repo per session
+# Ensure standard labels exist on the repo — runs once per repo, persisted across sessions
 _gh_ensure_labels() {
   local repo
   repo=$(git rev-parse --show-toplevel 2>/dev/null)
   [[ -n "${_GH_LABELS_DONE[$repo]}" ]] && return
+
+  # Warm in-memory flag from persistent cache — avoids gh label list on every new shell
+  mkdir -p "${_FORGED_PROJECTS_CACHE%/*}"
+  touch "$_FORGED_PROJECTS_CACHE"
+  if grep -qx "${repo}=LABELS_DONE" "$_FORGED_PROJECTS_CACHE" 2>/dev/null; then
+    _GH_LABELS_DONE[$repo]=1
+    return
+  fi
+
   _GH_LABELS_DONE[$repo]=1
   local existing
   existing=$(gh label list --json name --jq '.[].name' 2>/dev/null)
@@ -133,6 +142,8 @@ _gh_ensure_labels() {
     echo "$existing" | grep -qx "$name" || \
       gh label create "$name" --color "$color" --force >/dev/null 2>&1
   done
+  grep -qx "${repo}=LABELS_DONE" "$_FORGED_PROJECTS_CACHE" 2>/dev/null \
+    || echo "${repo}=LABELS_DONE" >> "$_FORGED_PROJECTS_CACHE"
 }
 
 # ---------------------------------------
@@ -322,11 +333,17 @@ _gh_project_set_status() {
 }
 
 _gh_project_sync() {
-  mkdir -p "${_GH_PROJECT_ERR_LOG%/*}"
-  local err
-  err=$( { _gh_project_set_status "$@"; } 2>&1 ) \
-    || printf "%s  project sync failed: #%s → %s\n  reason: %s\n" \
-        "$(date +%H:%M)" "$1" "$2" "${err:-no detail captured}" >> "$_GH_PROJECT_ERR_LOG"
+  # mkdir is atomic on POSIX — silently skips if a sync for this issue+status is already running
+  local lockdir="/tmp/gh-sync-${1}-${2// /-}.lock"
+  mkdir "$lockdir" 2>/dev/null || return
+  {
+    mkdir -p "${_GH_PROJECT_ERR_LOG%/*}"
+    local err
+    err=$( { _gh_project_set_status "$@"; } 2>&1 ) \
+      || printf "%s  project sync failed: #%s → %s\n  reason: %s\n" \
+          "$(date +%H:%M)" "$1" "$2" "${err:-no detail captured}" >> "$_GH_PROJECT_ERR_LOG"
+    rmdir "$lockdir"
+  } &!
 }
 
 # ---------------------------------------
