@@ -19,7 +19,7 @@ _govee_boot() {
   local lights=("$@")
 
   for light in "${lights[@]}"; do
-    curl -s -X PUT "http://localhost:8000/lights/${light}/control?model=${model}" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '{"name": "turn", "value": "on"}' >/dev/null &!
+    curl -s -m 3 -X PUT "http://localhost:8000/lights/${light}/control?model=${model}" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '{"name": "turn", "value": "on"}' >/dev/null &!
   done 
 } 
 
@@ -27,7 +27,7 @@ _govee_color() {
   local model="$1"
   local device="$2"
   local r="$3" g="$4" b="$5"
-  curl -s -X PUT "http://localhost:8000/lights/${device}/control?model=${model}" \
+  curl -s -m 3 -X PUT "http://localhost:8000/lights/${device}/control?model=${model}" \
     -H "x-api-key: $GOVEE_SERVER_KEY" \
     -H "Content-Type: application/json" \
     -d "{\"name\": \"color\", \"value\": {\"r\": $r, \"g\": $g, \"b\": $b}}" >/dev/null &!
@@ -37,7 +37,7 @@ _govee_apply() {
   local device="$1" model="$2" action="$3"
   case "$action" in
     on|off)
-      curl -s -X PUT "http://localhost:8000/lights/${device}/control?model=${model}" \
+      curl -s -m 3 -X PUT "http://localhost:8000/lights/${device}/control?model=${model}" \
         -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" \
         -d "{\"name\": \"turn\", \"value\": \"$action\"}" >/dev/null &!
       ;;
@@ -111,13 +111,13 @@ _govee_flash() {
     local restore='{"name":"color","value":{"r":75,"g":0,"b":130}}'
     local i
     for (( i=1; i<=${#devices}; i++ )); do
-      curl -sf -X PUT "http://localhost:8000/lights/${devices[$i]}/control?model=${models[$i]}" \
+      curl -sf -m 3 -X PUT "http://localhost:8000/lights/${devices[$i]}/control?model=${models[$i]}" \
         -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" \
         -d "$color" &>/dev/null &
     done
     sleep 2
     for (( i=1; i<=${#devices}; i++ )); do
-      curl -sf -X PUT "http://localhost:8000/lights/${devices[$i]}/control?model=${models[$i]}" \
+      curl -sf -m 3 -X PUT "http://localhost:8000/lights/${devices[$i]}/control?model=${models[$i]}" \
         -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" \
         -d "$restore" &>/dev/null &
     done
