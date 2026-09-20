@@ -297,15 +297,11 @@ workmode() {
   touch /tmp/workmode.lock
 
   # Alienware left - iTerm2
-  # Run pyserv in current window
-  osascript <<'ITERM'
-tell application "iTerm2"
-  activate
-  tell current session of current window
-    write text "pyserv"
-  end tell
-end tell
-ITERM
+  # Boot the govee server directly (don't type into whatever session has focus —
+  # that could be Claude Code). pyserv backgrounds uvicorn + logs to /tmp.
+  if ! lsof -ti :8000 >/dev/null 2>&1; then
+    pyserv
+  fi
 
   # Lights on - server should be ready
   _govee_boot "H6008" "$GOVEE_OFFICE"
