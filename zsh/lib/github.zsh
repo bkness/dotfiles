@@ -613,7 +613,8 @@ github_ui_push_commit() {
 
 github_ui_new() {
   local name
-  read "name?Repo name: "
+  echo -n "  Repo name: " >/dev/tty
+  read -r name </dev/tty
   [[ -z "$name" ]] && return 1
 
   local vis
@@ -624,17 +625,29 @@ github_ui_new() {
         --height=25%) || return
   vis="${vis##  }"
 
-  if _in_github_repo; then
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && ! _in_github_repo; then
     local reply
-    read "reply?Use current directory as source? (y/n): "
+    echo -n "  Push this directory to the new repo? (y/n): " >/dev/tty
+    read -r reply </dev/tty
     if [[ "$reply" == "y" ]]; then
-      gh repo create "$name" "--$vis" --source=. --remote=origin --push \
-        && echo "✅ Created and pushed: $name ($vis)"
+      if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+        _GH_MSG="  ⚠️  No commits yet — commit something first, then re-run Create Repo"
+        return 1
+      fi
+      if gh repo create "$name" "--$vis" --source=. --remote=origin --push; then
+        _GH_MSG="  ✅ Created and pushed: $name ($vis)"
+      else
+        _GH_MSG="  ❌ Create failed — see terminal above"
+      fi
       return
     fi
   fi
 
-  gh repo create "$name" "--$vis" && echo "✅ Created: $name ($vis)"
+  if gh repo create "$name" "--$vis"; then
+    _GH_MSG="  ✅ Created on GitHub: $name ($vis)"
+  else
+    _GH_MSG="  ❌ Create failed — see terminal above"
+  fi
 }
 
 github_ui_clone() {
@@ -1042,6 +1055,39 @@ github_ui_open_pr() {
   gh pr create --title "$title" --body "${body:-""}" \
     && _GH_MSG="  ✅ PR created${number:+ — will close #$number on merge}"
   [[ -n "$number" ]] && _gh_project_sync "$number" "In Review" &!
+}
+
+# ── dir-enter nudge — offer Create Repo when no github remote ─
+_GH_NUDGE_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/forged/gh-nudge-dismissed"
+
+_gh_nudge() {
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return
+  _in_github_repo && return
+
+  local toplevel
+  toplevel=$(git rev-parse --show-toplevel 2>/dev/null) || return
+
+  [[ -f "$_GH_NUDGE_CACHE" ]] && grep -qxF "$toplevel" "$_GH_NUDGE_CACHE" && return
+
+  print -P "  %F{yellow}💡  No GitHub remote here — %BCtrl+G%b › Create Repo   %F{8}(gh-nudge-hide to silence)%f"
+}
+register_hook "on_dir_enter" "_gh_nudge"
+
+gh-nudge-hide() {
+  local toplevel
+  toplevel=$(git rev-parse --show-toplevel 2>/dev/null) || {
+    echo "  ⚠️  Not in a git repo" >&2
+    return 1
+  }
+  mkdir -p "${_GH_NUDGE_CACHE:h}"
+  grep -qxF "$toplevel" "$_GH_NUDGE_CACHE" 2>/dev/null \
+    || echo "$toplevel" >> "$_GH_NUDGE_CACHE"
+  echo "  🤫  Hushed: $toplevel"
+}
+
+gh-nudge-reset() {
+  rm -f "$_GH_NUDGE_CACHE"
+  echo "  ♻️   Nudge cache cleared"
 }
 
 # ── keybind — Ctrl+G ─────────────────────────────────────────
