@@ -161,16 +161,17 @@ add-zsh-hook preexec _govee_preexec
 add-zsh-hook precmd _govee_precmd
 # Shared curl helper — all weballtech API calls go through here
 _weballtech_post() {
-  local endpoint="$1" payload="$2"
-  curl -sL --max-time 5 -X POST "https://weballtech-brandon-kellys-projects.vercel.app/${endpoint}" \
+  local endpoint="${1#/}" payload="$2"   # strip leading / — "//api" 308-redirects
+  # --fail: return non-zero on HTTP errors (401 etc.) instead of looking fine
+  curl -sfL --max-time 5 -X POST "https://weballtech-brandon-kellys-projects.vercel.app/${endpoint}" \
     -H 'Content-Type: application/json' \
     -H "Authorization: Bearer $WEBALLTECH_TOKEN" \
     -d "$payload" > /dev/null
 }
 
 # Online / offline status (updates weballtech.com/api/status)
-online()  { _weballtech_post "/api/status" '{"online":true}'  && echo "● online"  }
-offline() { _weballtech_post "/api/status" '{"online":false}' && echo "○ offline" }
+online()  { _weballtech_post "/api/status" '{"online":true}'  && echo "● online"  || echo "⚠ couldn't reach status API" }
+offline() { _weballtech_post "/api/status" '{"online":false}' && echo "○ offline" || echo "⚠ couldn't reach status API" }
 
 # Push shell metadata — skips curl if version/plugins/hooks unchanged
 _push_shell_status() {
@@ -179,7 +180,9 @@ _push_shell_status() {
   local hooks=${#_HOOKS[@]}
   local meta="$version-$plugins-$hooks"
   [[ "$meta" == "$(cat ~/.shell_meta_cache 2>/dev/null)" ]] && return
-  
+  # Only cache after a successful push, so a failed push retries next shell
+  _weballtech_post "/api/forged-status" "{\"type\":\"shell\",\"data\":{\"version\":\"$version\",\"plugins\":$plugins,\"hooks\":$hooks}}" \
+    && echo "$meta" > ~/.shell_meta_cache
 }
   
 _shell_open() {
