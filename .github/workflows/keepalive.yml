@@ -1,0 +1,37 @@
+# Keep free-tier portfolio demos awake.
+#
+# Supabase pauses free projects after 7 days without activity, and a paused
+# database crashes the app on startup. Hitting each demo wakes its Render /
+# Vercel instance, which connects to the database and counts as activity.
+#
+# Runs every 3 days (not 6): GitHub can start scheduled runs hours late, and
+# `*/N` in the day-of-month field resets on the 1st. A failed ping fails the
+# run, so GitHub emails you when a demo is down.
+#
+# Add a site: append its URL to SITES. Use a page that touches the database.
+
+name: keepalive
+
+on:
+  schedule:
+    - cron: "0 15 */3 * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    env:
+      SITES: |
+        https://brewery-search.onrender.com/
+    steps:
+      - name: Ping demos
+        run: |
+          failed=0
+          while IFS= read -r url; do
+            [ -z "$url" ] && continue
+            # Render free instances take up to ~60s to wake; retry once.
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 --retry 1 --retry-delay 10 "$url" || echo 000)
+            echo "$url → $code"
+            [ "$code" = "200" ] || failed=1
+          done <<< "$SITES"
+          exit $failed
