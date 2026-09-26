@@ -98,7 +98,7 @@ raw=$(osascript \
   -e '    set p to player position as integer' \
   -e '    set lv to "false"' \
   -e '    try' \
-  -e '      set lv to loved of current track as string' \
+  -e '      set lv to favorited of current track as string' \
   -e '    end try' \
   -e '    return s & "|" & n & "|" & ar & "|" & al & "|" & d & "|" & p & "|" & lv' \
   -e '  on error' \
@@ -140,7 +140,7 @@ PREVIEW
       -e '    set ar to artist of current track' \
       -e '    set lv to "false"' \
       -e '    try' \
-      -e '      set lv to loved of current track as string' \
+      -e '      set lv to favorited of current track as string' \
       -e '    end try' \
       -e '    return s & "|" & n & "|" & ar & "|" & lv' \
       -e '  on error' \
