@@ -22,7 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SITES: |
-        https://brewery-search.onrender.com/
+        # breweries: no anonymous page queries the DB, but a cold start runs
+        # sequelize.sync(), and a ping every 3 days is always a cold start.
+        https://breweries-bkness.vercel.app/
         https://nightowlz.onrender.com/api/bars
     steps:
       - name: Ping demos
