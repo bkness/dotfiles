@@ -1,7 +1,7 @@
 # ---------------------------------------
 # Ctrl+P Command Palette
-# Ctrl+F to Filter Ctrl+X to delte cache
-# Reads live from PLUGIN_REGISTRY and _HOOKS
+# Ctrl+F to Filter Ctrl+X to delete cache
+# Reads live from PLUGIN_REGISTRY, _HOOKS, aliases and zsh-abbr abbreviations
 # ---------------------------------------
 
 _palette_entries() {
@@ -22,10 +22,13 @@ _palette_entries() {
   _palette_row "pr" "cmd" "Pick project + open in editor"
   _palette_row "newproj" "cmd" "Create a new project"
   _palette_row "quick_edit_readme" "cmd" "Edit README in current project"
+  _palette_row "_finder_widget" "widget" "Search code in project, open in vim (Ctrl+F)"
   _palette_row "_explorer_widget" "widget" "Browse files (Ctrl+Q)"
   _palette_row "_jump_widget" "widget" "Jump anywhere (Ctrl+J)"
   _palette_row "_snippet_widget" "widget" "Insert snippet (Ctrl+S)"
   _palette_row "project_ui_widget" "widget" "Project dashboard"
+  (( ${+widgets[atuin-search]} )) && _palette_row "atuin-search" "widget" "Search shell history (Ctrl+R)"
+  _palette_row "workmode" "cmd" "Start Govee server, arrange iTerm2 + open VS Code"
 
   # --- Shell ---
   _palette_row "reload" "shell" "Restart shell (decrements counter)"
@@ -42,10 +45,9 @@ _palette_entries() {
   _palette_row "forged gen secret" "forged" "Generate 32-byte hex secret (JWT/API keys)"
   _palette_row "forged gen pin" "forged" "Generate 6-digit PIN"
   _palette_row "forged gen uuid" "forged" "Generate UUID v4"
-  _palette_row "scan" "forged" "Scan deps + push cache to badge"
+  _palette_row "scan" "forged" "Scan deps (malware, integrity, publishers) + push badge"
   _palette_row "scan-repos" "forged" "Batch scan multiple repos"
   _palette_row "forged readme" "forged" "Interactive README generator"
-  _palette_row "forged init" "forged" "Bootstrap dev environment"
 
   # --- Git ---
   _palette_row "gs" "git" "git status"
@@ -64,25 +66,30 @@ _palette_entries() {
   _palette_row "cm" "git" "Switch to main or master"
   _palette_row "gbr" "git" "Fuzzy switch any branch"
   _palette_row "nukebranches" "git" "Delete all remote branches except main/master"
+  _palette_row "gcm" "git" "AI commit message from staged diff"
+  _palette_row "gcmpr" "git" "AI PR title + body from staged diff"
+  _palette_row "gsync" "git" "Pull + list any conflicts"
+  _palette_row "gfix" "git" "Show status + conflicts mid rebase/merge"
+  _palette_row "gundo" "git" "Abort the rebase/merge in progress"
+  _palette_row "gh-nudge-hide" "git" "Stop GitHub nudges for this repo"
+  _palette_row "gh-nudge-reset" "git" "Clear hushed GitHub nudges"
 
   # --- Govee ---
   _palette_row "govee" "govee" "Interactive light controller (room + action picker)"
-  _palette_row "_govee_widget" "widget" "Govee picker inline (bound widget)"
+  _palette_row "_govee_widget" "widget" "Govee light controls (Ctrl+V)"
+  _palette_row "pyserv" "govee" "Start the Govee API server"
+  _palette_row "killpy" "govee" "Stop the Govee API server"
   _palette_row "goveestat" "govee" "Show all light states via local API"
 
   # --- GitHub ---
   _palette_row "_github_ui_widget" "widget" "GitHub dashboard (Ctrl+G)"
 
   # --- Music ---
-  _palette_row "_music_widget" "widget" "Music controls + catalog search (Ctrl+])"
+  _palette_row "_music_widget" "widget" "Music controls, stations + catalog search (Ctrl+])"
   _palette_row "music" "music" "Open Music app"
   _palette_row "mplay" "music" "Toggle play/pause"
   _palette_row "mnext" "music" "Next track"
   _palette_row "mprev" "music" "Previous track"
-  _palette_row "mymusic" "music" "Brandon's station"
-  _palette_row "omens" "music" "Bad Omens station"
-  _palette_row "prevail" "music" "I Prevail station"
-  _palette_row "horizon" "music" "Bring Me the Horizon station"
 
   # --- Dotfiles / editor ---
   _palette_row "vima" "edit" "Edit aliases.zsh"
@@ -141,6 +148,20 @@ _palette_entries() {
     expansion="${expansion:0:60}"
     _palette_row "$name" "alias" "$expansion"
   done < <(alias)
+
+  # --- Live: zsh-abbr abbreviations not already listed ---
+  # Lines look like: abbr "gsync"="gsync"  (optionally with -g/--global flags)
+  local _abbr_file="${ABBR_USER_ABBREVIATIONS_FILE:-$HOME/dev/dotfiles/zsh/abbreviations}"
+  if [[ -r "$_abbr_file" ]]; then
+    local line
+    while IFS= read -r line; do
+      [[ "$line" =~ '^abbr( -[a-zA-Z-]+)* "([^"]+)"="(.*)"$' ]] || continue
+      local name="${match[2]}" expansion="${match[3]//\\\"/\"}"
+      expansion="${expansion//\\\$/\$}"   # file escapes $ as \$
+      [[ -z "${_seen[$name]}" ]] || continue
+      _palette_row "$name" "abbr" "${expansion:0:60}"
+    done < "$_abbr_file"
+  fi
 }
 
 fmt_demo() {
