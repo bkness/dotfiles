@@ -102,3 +102,7 @@ scan            # dep scan + push badge cache
 ```
 
 Full reference: [weballtech.com/manual](https://weballtech.com/manual)
+
+## License
+
+MIT © [Brandon Kelly](https://github.com/bkness)
