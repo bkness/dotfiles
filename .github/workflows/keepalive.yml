@@ -23,6 +23,7 @@ jobs:
     env:
       SITES: |
         https://brewery-search.onrender.com/
+        https://nightowlz.onrender.com/api/bars
     steps:
       - name: Ping demos
         run: |
