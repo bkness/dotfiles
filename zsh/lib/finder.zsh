@@ -89,7 +89,13 @@ finder_ui() {
   #   --smart-case           → case-insensitive unless query has uppercase
   #   --hidden --glob=!.git  → include dotfiles but skip .git noise
   #   --max-count=100        → per-file cap so one big file can't drown results
-  local RG="rg --column --line-number --no-heading --color=always --smart-case --hidden --glob=!.git --max-count=100"
+  #   --max-columns=200      → minified one-liners show as "[Omitted long line]"
+  #   NOISE globs            → lockfiles, minified bundles, generated code
+  # Quoted: fzf runs these through zsh, which would try to glob-expand `*`
+  local NOISE="--glob='!.git' --glob='!*.lock' --glob='!package-lock.json' --glob='!pnpm-lock.yaml' --glob='!*.min.*' --glob='!*.map' --glob='!**/generated/**' --glob='!dist/**' --glob='!build/**' --glob='!.next/**'"
+  local RG="rg --column --line-number --no-heading --color=always --smart-case --hidden $NOISE --max-count=100 --max-columns=200 --max-columns-preview"
+  # File list shaped like a match (path:1:1:) so preview/Enter work unchanged
+  local FILES="rg --files --hidden $NOISE"
   local PREVIEW='bat --color=always --style=numbers --paging=never --highlight-line {2} --line-range=$(({2}<15?1:{2}-15)): {1}'
   local project_name="${root:t}"
   local result
@@ -111,6 +117,11 @@ finder_ui() {
     project_name="claude settings"
   fi
 
+  # Empty/short query → file names (filtered by the query); 3+ chars →
+  # search file contents. One char matched nearly every line before.
+  local LIST="$FILES$targets | sed 's/\$/:1:1:/'"
+  local SEARCH="q={q}; if [ \${#q} -lt 3 ]; then $FILES$targets | grep -iF -- \"\$q\" | sed 's/\$/:1:1:/'; else $RG -- \"\$q\"$targets; fi"
+
   result=$(
     cd "$root" && : | fzf "${FZF_THEME[@]}" \
       --ansi \
@@ -119,11 +130,12 @@ finder_ui() {
       --border-label="  ◈  Find in $project_name  " \
       --border-label-pos=2 \
       --prompt='  🔍  ' \
-      --header=$'  \e[38;2;0;173;216mType\e[0m search   \e[38;2;0;173;216mEnter\e[0m open   \e[38;2;0;173;216m^O\e[0m insert   \e[38;2;0;173;216m^U\e[0m toggle preview' \
+      --header=$'  \e[38;2;0;173;216mType\e[0m file name · \e[38;2;0;173;216m3+ chars\e[0m search contents   \e[38;2;0;173;216mEnter\e[0m open   \e[38;2;0;173;216m^O\e[0m insert   \e[38;2;0;173;216m^U\e[0m toggle preview' \
       --header-first \
       --delimiter=: \
       --query='' \
-      --bind "change:reload:sleep 0.1; $RG -- {q}$targets || true" \
+      --bind "start:reload:$LIST" \
+      --bind "change:reload:sleep 0.1; $SEARCH || true" \
       --bind "ctrl-u:toggle-preview" \
       --color='border:#00ff41,label:#00ff41,header:italic' \
       --preview="$PREVIEW" \
