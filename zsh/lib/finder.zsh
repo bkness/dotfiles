@@ -72,16 +72,14 @@ _finder_pick_project() {
 }
 
 # desc: Ctrl+F fuzzy code search (smart-scoped to project)
-_finder_widget() {
-  zle -I
-
+finder_ui() {
   # ─── Step 1: Determine search root ───
   local root
   root=$(_finder_project_root)
   if [[ -z "$root" ]]; then
-    root=$(_finder_pick_project) || { zle reset-prompt; return; }
+    root=$(_finder_pick_project) || return
   fi
-  [[ -z "$root" ]] && { zle reset-prompt; return; }
+  [[ -z "$root" ]] && return
 
   # ─── Step 2: Fuzzy grep within root ───
   # ripgrep flags:
@@ -134,12 +132,12 @@ _finder_widget() {
       --expect='enter,ctrl-o'
   )
 
-  [[ -z "$result" ]] && { zle reset-prompt; return; }
+  [[ -z "$result" ]] && return
 
   local key match file line
   key=$(head -1 <<< "$result")
   match=$(awk 'NR==2' <<< "$result")
-  [[ -z "$match" ]] && { zle reset-prompt; return; }
+  [[ -z "$match" ]] && return
 
   # rg output is relative to $root (we cd'd), make it absolute
   file="$root/$(cut -d: -f1 <<< "$match")"
@@ -158,5 +156,12 @@ _finder_widget() {
   esac
 }
 
+# ── keybind — Ctrl+F ─────────────────────────────────────────
+_finder_widget() {
+  zle -I
+  { finder_ui } always {
+    zle reset-prompt
+  }
+}
 zle -N _finder_widget
 bindkey '^F' _finder_widget
