@@ -96,7 +96,9 @@ finder_ui() {
   local RG="rg --column --line-number --no-heading --color=always --smart-case --hidden $NOISE --max-count=100 --max-columns=200 --max-columns-preview"
   # File list shaped like a match (path:1:1:) so preview/Enter work unchanged
   local FILES="rg --files --hidden $NOISE"
-  local PREVIEW='bat --color=always --style=numbers --paging=never --highlight-line {2} --line-range=$(({2}<15?1:{2}-15)): {1}'
+  # {2} is empty while the list reloads (or on no match) — default to line 1
+  # so the math below can't fail with "bad math expression"
+  local PREVIEW='l={2}; case $l in (""|*[!0-9]*) l=1;; esac; bat --color=always --style=numbers --paging=never --highlight-line $l --line-range=$(( l < 15 ? 1 : l - 15 )): {1}'
   local project_name="${root:t}"
   local result
 
