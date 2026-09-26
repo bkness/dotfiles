@@ -98,7 +98,7 @@ raw=$(osascript \
   -e '    set p to player position as integer' \
   -e '    set lv to "false"' \
   -e '    try' \
-  -e '      set lv to loved of current track as string' \
+  -e '      set lv to favorited of current track as string' \
   -e '    end try' \
   -e '    return s & "|" & n & "|" & ar & "|" & al & "|" & d & "|" & p & "|" & lv' \
   -e '  on error' \
@@ -140,7 +140,7 @@ PREVIEW
       -e '    set ar to artist of current track' \
       -e '    set lv to "false"' \
       -e '    try' \
-      -e '      set lv to loved of current track as string' \
+      -e '      set lv to favorited of current track as string' \
       -e '    end try' \
       -e '    return s & "|" & n & "|" & ar & "|" & lv' \
       -e '  on error' \
@@ -196,13 +196,19 @@ PREVIEW
         sleep 0.8
         ;;
       "♥  Love Track")
-        osascript -e 'tell application "Music" to set loved of current track to true'
-        _MUSIC_MSG="  ♥  Loved: $track_name"
+        if osascript -e 'tell application "Music" to set favorited of current track to true' 2>/dev/null; then
+          _MUSIC_MSG="  ♥  Loved: $track_name"
+        else
+          _MUSIC_MSG="  ⚠️  Can't love this track (radio streams don't support it)"
+        fi
         break
         ;;
       "♡  Unlove Track")
-        osascript -e 'tell application "Music" to set loved of current track to false'
-        _MUSIC_MSG="  ♡  Unloved: $track_name"
+        if osascript -e 'tell application "Music" to set favorited of current track to false' 2>/dev/null; then
+          _MUSIC_MSG="  ♡  Unloved: $track_name"
+        else
+          _MUSIC_MSG="  ⚠️  Can't unlove this track (radio streams don't support it)"
+        fi
         break
         ;;
       "🔍  Search Catalog") music_ui_search; break ;;
