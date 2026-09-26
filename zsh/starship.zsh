@@ -1,4 +1,4 @@
-export STARSHIP_CONFIG="$HOME/.config/starship.toml"
+export STARSHIP_CONFIG="$HOME/dev/dotfiles/starship/starship.toml"
 
 # Lazy-load starship on first prompt draw
 _starship_lazy() {
