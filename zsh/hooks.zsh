@@ -88,6 +88,31 @@ project_detect() {
 autoload -Uz add-zsh-hook
 add-zsh-hook chpwd _hook_chpwd
 
+# ---------------------------------------
+# Dependency scan on project entry
+# ---------------------------------------
+# `forged scan --changed` exits in ~50ms when package.json + lockfile match a
+# scan from the last week, so this is cheap on most cd's. A real scan can take
+# ~20s, so it runs in the background and writes its one-line alert to a file;
+# the next prompt prints it instead of scribbling over the line you're typing.
+_FORGED_ALERT="${TMPDIR:-/tmp}/forged-alert.$$"
+
+_forged_autoscan() {
+  [[ -f package-lock.json ]] || return
+  (( $+commands[forged] )) || return
+  forged scan --changed --quiet >"$_FORGED_ALERT" 2>/dev/null &!
+}
+register_hook "on_dir_enter" "_forged_autoscan"
+
+_forged_alert() {
+  [[ -s "$_FORGED_ALERT" ]] || return
+  echo; cat "$_FORGED_ALERT"; echo
+  : >"$_FORGED_ALERT"
+}
+add-zsh-hook precmd _forged_alert
+add-zsh-hook zshexit _forged_alert_cleanup
+_forged_alert_cleanup() { rm -f "$_FORGED_ALERT" }
+
 # Wire on_exit — fires on normal exit and when terminal window is closed (SIGHUP)
 # Guard: SHLVL=1 (outermost shell only) + fire_hook must be defined (full env loaded)
 zshexit() { [[ $SHLVL -eq 1 ]] && typeset -f fire_hook > /dev/null && fire_hook "on_exit" }
