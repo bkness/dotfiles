@@ -78,7 +78,7 @@ Select files → Commit message → Open PR (optional)
 |------|---------------|
 | `env.zsh` | Exports, setopts, lazy NVM, FZF theme |
 | `tools.zsh` | fzf config, fzf-tab, Ctrl+R widget, zoxide |
-| `hooks.zsh` | Hook dispatcher, `chpwd`, `project_detect()`, auto-venv, auto-nvm |
+| `hooks.zsh` | Hook dispatcher, `chpwd`, `project_detect()`, auto-venv, auto-nvm, background `forged scan --changed` on project entry |
 | `aliases.zsh` | Git shortcuts, shell aliases, Govee widget + flash-on-push |
 | `dev.zsh` | `dev`, `newproj`, `p`, `pr`, `j`, `cb`, `cm`, `gbr` |
 | `starship.zsh` | Lazy-loads starship on first prompt draw |
