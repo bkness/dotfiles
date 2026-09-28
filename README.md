@@ -1,6 +1,6 @@
 # dotfiles
 
-Modular zsh config powering the [devforge](https://weballtech.com/manual) developer environment. Ships as part of [forged-cli](https://npmjs.com/package/forged-cli).
+Modular zsh config powering the [devforge](https://weballtech-brandon-kellys-projects.vercel.app/manual.html) developer environment. Ships as part of [forged-cli](https://npmjs.com/package/forged-cli).
 
 ## Prerequisites
 
@@ -101,7 +101,7 @@ sz              # reload shell config
 scan            # dep scan + push badge cache
 ```
 
-Full reference: [weballtech.com/manual](https://weballtech.com/manual)
+Full reference: [Forged manual](https://weballtech-brandon-kellys-projects.vercel.app/manual.html)
 
 ## License
 

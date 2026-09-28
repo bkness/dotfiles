@@ -169,7 +169,7 @@ _weballtech_post() {
     -d "$payload" > /dev/null
 }
 
-# Online / offline status (updates weballtech.com/api/status)
+# Online / offline status (updates the Forged site's /api/status)
 online()  { _weballtech_post "/api/status" '{"online":true}'  && echo "● online"  || echo "⚠ couldn't reach status API" }
 offline() { _weballtech_post "/api/status" '{"online":false}' && echo "○ offline" || echo "⚠ couldn't reach status API" }
 

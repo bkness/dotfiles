@@ -1,5 +1,5 @@
 abbr ".."="cd .."
-abbr "apistat"="open \"https://www.weballtech.com/api/\""
+abbr "apistat"="open \"https://weballtech-brandon-kellys-projects.vercel.app/api/status\""
 abbr "audit"="npx @bkness/site-audit "
 abbr "bk"="open \"https://www.github.com/bkness/\""
 abbr "c"="clear"
