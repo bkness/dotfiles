@@ -5,6 +5,8 @@
 DEV_CACHE="$HOME/.dev-projects-cache"
 
 refresh-dev-cache() {
+  # A fresh machine may not have $DEV_ROOT yet; an empty cache beats fd errors
+  [[ -d "$DEV_ROOT" ]] || { : > "$DEV_CACHE"; return 0 }
   fd . "$DEV_ROOT" -td -d3 > "$DEV_CACHE"
 }
 

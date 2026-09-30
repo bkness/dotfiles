@@ -21,7 +21,9 @@ symbol = ""
 
 [username]
 show_always = true
-format = "[bkness](fg:#4a7a55)@[forged](fg:#00ADD8) "
+# Shows your own login name; the alias keeps "bkness" on Brandon's Mac
+aliases = { "ghost" = "bkness" }
+format = "[$user](fg:#4a7a55)@[forged](fg:#00ADD8) "
 
 [aws]
 symbol = " "

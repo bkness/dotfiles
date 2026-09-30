@@ -2,7 +2,8 @@
 # Environment variables
 # ---------------------------------------
 
-export EDITOR="code"
+# VS Code when it's installed, vim otherwise
+(( $+commands[code] )) && export EDITOR="code" || export EDITOR="vim"
 
 export PATH="$HOME/.local/bin:$PATH"
 

@@ -5,8 +5,15 @@ export PATH="/opt/homebrew/bin:$PATH"
 export PATH="/usr/local/share/dotnet:$PATH"
 export PATH="$HOME/.local/bin:$PATH"
 
-source ~/.local/share/zinit/zinit.git/zinit.zsh
-source ~/dev/dotfiles/zsh/plugins.zsh
+# Zinit is cloned by `forged init`; without it, skip the plugins instead of
+# erroring on every `zinit` line
+if [[ -f ~/.local/share/zinit/zinit.git/zinit.zsh ]]; then
+  source ~/.local/share/zinit/zinit.git/zinit.zsh
+  source ~/dev/dotfiles/zsh/plugins.zsh
+else
+  echo "⚒  zinit not found: plugins skipped. Run \`forged init\` to install it."
+  zinit() { : }
+fi
 
 # Add custom completions to fpath BEFORE compinit
 fpath=("$HOME/.zfunc" "${fpath[@]}")
@@ -53,6 +60,10 @@ done
 
 source "$HOME/dev/dotfiles/zsh/plugins/theme/neon-cockpit.zsh"
 
+# Machine-specific extras (Govee, status pushes, workmode). Off unless
+# ~/.secrets (sourced by env.zsh) sets FORGED_PERSONAL=1.
+[[ "$FORGED_PERSONAL" == 1 ]] && source "$HOME/dev/dotfiles/zsh/personal.zsh"
+
 zinit light-mode for \
     zdharma-continuum/zinit-annex-as-monitor \
     zdharma-continuum/zinit-annex-bin-gem-node \
@@ -62,4 +73,4 @@ zinit light-mode for \
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 # Track shell count — auto online/offline (guard prevents sz/source from double-incrementing)
-[[ -z "$_SHELL_REGISTERED" ]] && { _SHELL_REGISTERED=1; _shell_open; }
+(( $+functions[_shell_open] )) && [[ -z "$_SHELL_REGISTERED" ]] && { _SHELL_REGISTERED=1; _shell_open; }

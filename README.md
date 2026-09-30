@@ -15,11 +15,11 @@ Modular zsh config powering the [devforge](https://weballtech-brandon-kellys-pro
 | `zoxide` | Smart `cd` with memory |
 | `starship` | Prompt |
 
-```zsh
-brew install gh fzf eza bat fd zoxide starship
-```
+`forged init` offers to install these for you.
 
 ## Install
+
+You need [Homebrew](https://brew.sh) and Node 18+ first (`brew install node`).
 
 ```zsh
 npm install -g forged-cli
@@ -27,7 +27,18 @@ forged init
 exec zsh
 ```
 
-`forged init` clones this repo to `~/dev/dotfiles` and adds a source hook to `~/.zshrc`. Your existing config is never overwritten.
+`forged init` walks you through setup and asks before each step:
+
+1. Installs any missing tools above with Homebrew
+2. Clones [zinit](https://github.com/zdharma-continuum/zinit) (the plugin manager) to `~/.local/share/zinit`
+3. Clones this repo to `~/dev/dotfiles`
+4. Adds one `source` line to the end of `~/.zshrc`, after backing it up. Nothing already in your `~/.zshrc` is changed or removed.
+
+Run `forged init --dry-run` to see the plan without changing anything.
+
+### Personal mode
+
+`zsh/personal.zsh` holds the parts that only work on my machine: Govee lights (`Ctrl+V`), the Forged site status pushes, and `workmode`. It loads only when `~/.secrets` sets `FORGED_PERSONAL=1`, so a fresh install skips it.
 
 ## One-time GitHub setup
 
@@ -46,9 +57,13 @@ All widgets are accessible via `Ctrl+P` (command palette) or their direct keybin
 |---------|--------|-------------|
 | `Ctrl+P` | Command palette | Browse and run any command, alias, or widget. `Ctrl+F` cycles category filter. |
 | `Ctrl+G` | GitHub dashboard | Full GitHub TUI — issues, PRs, branches, repos, notifications |
-| `Ctrl+E` | File explorer | Navigate directories with Tab/Shift+Tab, cd or insert path on Enter |
-| `Ctrl+V` | Govee lights | Room + action picker for smart light control |
-| `Ctrl+R` | History search | fzf-powered shell history |
+| `Ctrl+F` | Code finder | Search code in the current project, open the match in vim |
+| `Ctrl+Q` | File explorer | Navigate directories with Tab/Shift+Tab, cd or insert path on Enter |
+| `Ctrl+J` | Jump | Jump to any directory you've visited (zoxide) |
+| `Ctrl+S` | Snippets | Insert a snippet from `zsh/snippets/` |
+| `Ctrl+]` | Music | Apple Music playback and stations; catalog search needs Apple Music API keys in `~/.secrets` |
+| `Ctrl+R` | History search | [Atuin](https://atuin.sh) full-history search, if installed (`brew install atuin`) |
+| `Ctrl+V` | Govee lights | Personal mode only |
 
 ## GitHub Workflow (Ctrl+G)
 
@@ -79,7 +94,8 @@ Select files → Commit message → Open PR (optional)
 | `env.zsh` | Exports, setopts, lazy NVM, FZF theme |
 | `tools.zsh` | fzf config, fzf-tab, Ctrl+R widget, zoxide |
 | `hooks.zsh` | Hook dispatcher, `chpwd`, `project_detect()`, auto-venv, auto-nvm, background `forged scan --changed` on project entry |
-| `aliases.zsh` | Git shortcuts, shell aliases, Govee widget + flash-on-push |
+| `aliases.zsh` | Shell aliases and git helpers (`gfix`, `gundo`, `gsync`) |
+| `personal.zsh` | Personal mode only: Govee, status pushes, shell open/close lifecycle, `workmode` |
 | `dev.zsh` | `dev`, `newproj`, `p`, `pr`, `j`, `cb`, `cm`, `gbr` |
 | `starship.zsh` | Lazy-loads starship on first prompt draw |
 | `lib/cache.zsh` | `~/.dev-projects-cache` and `~/.dev-recent` |
@@ -98,7 +114,7 @@ newproj [name]  # scaffold new project
 p               # fuzzy project picker
 j               # jump anywhere (zoxide)
 sz              # reload shell config
-scan            # dep scan + push badge cache
+scan            # dependency scan (forged scan)
 ```
 
 Full reference: [Forged manual](https://weballtech-brandon-kellys-projects.vercel.app/manual.html)
