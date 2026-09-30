@@ -11,6 +11,7 @@ GOVEE_OFFICE="6F:1C:60:74:F4:5B:55:F0"
 GOVEE_MAIN="72:50:C6:35:33:33:59:46"
 GOVEE_OL_1="10:CE:60:74:F4:5E:18:26"
 GOVEE_OL_2="6E:3D:60:74:F4:55:DB:44"
+GOVEE_LIVING_RIGHT="$GOVEE_OL_2"  # right as seen from the desk; confirmed by blinking it
 GOVEE_KITCHEN_1="38:BF:60:74:F4:5E:91:20"
 GOVEE_KITCHEN_2="36:5E:60:74:F4:48:8A:4A"
 GOVEE_KITCHEN_3="74:F3:60:74:F4:5B:66:7A"
@@ -105,11 +106,11 @@ _govee_widget() {
 zle -N _govee_widget # desc: create zle widget for govee menu
 bindkey '^V' _govee_widget # desc: Ctrl+V to open Govee light control menu
 
-# Git status flashes on the office light + the middle kitchen bulb (the
-# lightbars came off the wall). Each light goes back to its own look
-# afterwards: the office is purple, the kitchen bulb is 5400K white.
+# Git status flashes on the office light, the middle kitchen bulb and the
+# right living room bulb (the lightbars came off the wall). Each light goes
+# back to its own look afterwards: office purple, the bulbs 5400K white.
 # Govee allows ~10 requests a minute for the whole account, so a flash is
-# 4 requests (2 colors + 2 restores) and flashes share one cooldown.
+# 6 requests (3 colors + 3 restores) and flashes share one cooldown.
 #   green  = push went through
 #   yellow = committed, not pushed yet (same as the yellow nag)
 #   red    = push or commit failed
@@ -126,6 +127,7 @@ _GOVEE_CMD_KIND=""
 _govee_flash_lights() {
   print -r -- "$GOVEE_OFFICE H6008 "'{"name":"color","value":{"r":75,"g":0,"b":130}}'
   print -r -- "$GOVEE_KITCHEN_MIDDLE H6008 "'{"name":"colorTem","value":5400}'
+  print -r -- "$GOVEE_LIVING_RIGHT H6008 "'{"name":"colorTem","value":5400}'
 }
 
 _govee_send() {  # device model json
@@ -190,10 +192,20 @@ _govee_precmd() {
   else
     color=yellow
   fi
-  # One flash a minute, whatever the color (commit then push = one flash)
-  (( EPOCHSECONDS - _GOVEE_LAST_FLASH >= 60 )) || return
+  flash $color --quiet
+}
+
+# flash green|yellow|red — by hand (abbrs flashg/flashy/flashr) or from the
+# git hooks. One flash a minute, whatever the color, so neither a
+# commit-then-push nor mashing the abbr can hit Govee's rate limit.
+flash() {
+  local wait=$(( 60 - (EPOCHSECONDS - _GOVEE_LAST_FLASH) ))
+  if (( wait > 0 )); then
+    [[ "$2" == --quiet ]] || echo "  💡 cooling down, try again in ${wait}s"
+    return
+  fi
   _GOVEE_LAST_FLASH=$EPOCHSECONDS
-  _govee_flash $color
+  _govee_flash "$1"
 }
 
 add-zsh-hook preexec _govee_preexec
