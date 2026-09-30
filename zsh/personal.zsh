@@ -236,26 +236,36 @@ _push_shell_status() {
     && echo "$meta" > ~/.shell_meta_cache
 }
   
+# Open terminals are counted by process: each shell leaves a marker named
+# after its PID in ~/.cache/forged/shells, and the count is how many of those
+# PIDs are still alive. A crashed or force-quit tab can't leave the count
+# stuck (the old ~/.shell_count file drifted, and capping it at 1 meant
+# closing any tab went offline). Claude Code's shells (CLAUDECODE=1) never
+# register, trigger workmode, or change the online badge.
+_SHELLS_DIR=~/.cache/forged/shells
+
+_shell_count() {  # live shells other than this one; prunes dead markers
+  local f n=0
+  for f in $_SHELLS_DIR/<->(N); do
+    [[ ${f:t} == $$ ]] && continue
+    if kill -0 ${f:t} 2>/dev/null; then (( n++ )); else rm -f $f; fi
+  done
+  echo $n
+}
+
 _shell_open() {
+  [[ -n "$CLAUDECODE" ]] && return
   [[ -f /tmp/workmode.lock ]] && return
-  local prev=$(cat ~/.shell_count 2>/dev/null || echo 0)
-  local count=$(( prev + 1))
-  [[ $count -gt 1 ]] && count=1
-  echo $count > ~/.shell_count
-  echo "shell count: $count:"
-  if [[ $prev -eq 0 ]]; then
-    mkdir /tmp/boot_once_$(date +%Y%m%d) 2>/dev/null || return
-    sleep 3
-    online &!
-    _push_shell_status &!
-    local version=$(forged version 2>/dev/null | sed 's/forged-cli v//' || echo "unknown")
-    local msg="● online | v$version | lights on | music up"
-    [[ $(osascript -e 'tell application "Music" to get player state' 2>/dev/null) != "playing" ]] && \
-      osascript -e 'open location "musics://music.apple.com/us/station/brandons-station/ra.u-40787829f08b63e81abb70ff757aa95f"' &!
-    osascript -e "display notification \"$msg\" with title \"Shell opened\"" &!
-    { workmode } &!
-  fi
-}  
+  mkdir -p $_SHELLS_DIR
+  local prev=$(_shell_count)
+  : > $_SHELLS_DIR/$$
+  echo "shell count: $(( prev + 1 ))"
+  # The boot: first shell alive, once a day
+  (( prev == 0 )) || return
+  mkdir /tmp/boot_once_$(date +%Y%m%d) 2>/dev/null || return
+  sleep 3
+  { workmode } &!   # in the background, so the first prompt isn't held up
+}
 
 _shell_current() {
   local state
@@ -284,10 +294,10 @@ _shell_current() {
 }
 
 _shell_close() {
-  local count=$(( $(cat ~/.shell_count 2>/dev/null || echo 1) - 1 ))
-  [[ $count -lt 0 ]] && count=0
-  echo $count > ~/.shell_count
-  [[ $count -le 0 ]] && offline
+  [[ -n "$CLAUDECODE" ]] && return
+  rm -f $_SHELLS_DIR/$$
+  (( $(_shell_count) == 0 )) || return   # other terminals still open
+  offline
   rm -f ~/.cache/forged/workmode-state
 }
 
@@ -300,12 +310,6 @@ scan() {
   [[ -f "$cache" ]] && _weballtech_post "/api/forged-status" "{\"type\":\"scanner\",\"data\":$(cat $cache)}" &!
 }
 
-reload() {
-  local count=$(( $(cat ~/.shell_count 2>/dev/null || echo 1) - 1 ))
-  [[ $count -lt 0 ]] && count=0
-  echo $count > ~/.shell_count
-  exec zsh -l
-}
 
 # Govee light controls via interactive menu
 # Use: govee() to open fzf menu, pick room + action
@@ -330,6 +334,18 @@ _minimize() {
   osascript -e "tell application \"System Events\" to set miniaturized of window 1 of process \"$1\" to true"
 }
 
+# workmode — ASUS (1920x1080, main, left) + MacBook (1440x900, right).
+# The Alienware is gone, so iTerm and VS Code split the ASUS and one Chrome
+# window with tabs fills the MacBook. Existing Chrome windows are left alone.
+WORKMODE_TABS=(
+  "https://github.com/bkness"
+  "https://vercel.com/dashboard"
+  "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array"
+  "https://www.youtube.com"
+)
+
+# desc: Start the cockpit: online badge, Music, Govee server, lights, windows
+# Runs by itself on the first terminal of the day; type `workmode` any time.
 workmode() {
   local force=0
   [[ "$1" == "--force" || "$1" == "-f" ]] && force=1
@@ -339,63 +355,63 @@ workmode() {
   fi
   touch /tmp/workmode.lock
 
-  # Alienware left - iTerm2
-  # Boot the govee server directly (don't type into whatever session has focus —
-  # that could be Claude Code). pyserv backgrounds uvicorn + logs to /tmp.
+  # Online badge, Music station (unless something's playing), notification
+  online &!
+  _push_shell_status &!
+  local version=$(forged version 2>/dev/null | sed 's/forged-cli v//' || echo "unknown")
+  [[ $(osascript -e 'tell application "Music" to get player state' 2>/dev/null) != "playing" ]] && \
+    osascript -e 'open location "musics://music.apple.com/us/station/brandons-station/ra.u-40787829f08b63e81abb70ff757aa95f"' &!
+  osascript -e "display notification \"● online | v$version | lights on | music up\" with title \"Workmode\"" &!
+
+  # Govee server, then the same 3 lights the git flash uses
   if ! lsof -ti :8000 >/dev/null 2>&1; then
     pyserv
   fi
-
-  # Lights on - server should be ready
   _govee_boot "H6008" "$GOVEE_OFFICE"
-  _govee_boot "H610A" "$GOVEE_MAIN"
+  _govee_boot "H6008" "$GOVEE_KITCHEN_MIDDLE"
+  _govee_boot "H6008" "$GOVEE_LIVING_RIGHT"
 
-
-  # Position existing window
+  # ASUS left half: iTerm
   osascript <<'ITERM2'
 tell application "iTerm2"
   tell current window
-    set bounds to {0, 0, 1282, 1440}
+    set bounds to {0, 25, 960, 1080}
   end tell
 end tell
 ITERM2
 
-  # Alienware right - VS Code
+  # ASUS right half: VS Code
   open -a "Visual Studio Code"
   osascript <<'VSCODE'
 tell application "Visual Studio Code" to activate
+delay 1
 tell application "System Events"
   tell process "Code"
-    set position of window 1 to {1277, 0}
-    set size of window 1 to {1277, 1440}
+    set position of window 1 to {960, 25}
+    set size of window 1 to {960, 1055}
   end tell
 end tell
 VSCODE
 
-# Launch Chrome with no window, wait until it's up, then place windows
-osascript <<'CHROME'
-tell application "Google Chrome"
-  activate
-  if (count of windows) is 0 then
-    make new window
-  end if
-  close every window
-  set w1 to make new window
-  set bounds of w1 to {2561, 0, 3520, 1080}
-  set URL of active tab of w1 to "https://github.com/bkness"
-  set w2 to make new window
-  set bounds of w2 to {3520, 0, 4480, 1080}
-  set URL of active tab of w2 to "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array"
-  set w3 to make new window
-  set bounds of w3 to {4485, 77, 5322, 1123}
-  set URL of active tab of w3 to "https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started"
-  set w4 to make new window
-  set bounds of w4 to {5322, 77, 6160, 1123}
-  set URL of active tab of w4 to "https://www.youtube.com"
-end tell
+  # MacBook: one new Chrome window with the workmode tabs. The MacBook is
+  # shorter and bottom-aligned with the ASUS, so its top edge is y=180.
+  local tabs=("${WORKMODE_TABS[@]}")
+  osascript - "${tabs[@]}" <<'CHROME'
+on run urls
+  tell application "Google Chrome"
+    activate
+    set w to make new window
+    set bounds of w to {1920, 205, 3360, 1080}
+    set URL of active tab of w to item 1 of urls
+    repeat with i from 2 to count of urls
+      tell w to make new tab with properties {URL:item i of urls}
+    end repeat
+    set active tab index of w to 1
+  end tell
+end run
 CHROME
 
- # Return focus to iTerm2
+  # Focus back on iTerm
   osascript <<'FOCUS'
 tell application "iTerm2"
   activate
@@ -412,3 +428,6 @@ FOCUS
   echo "active" > ~/.cache/forged/workmode-state
   echo "Workspace ready. Go get em. 🚀"
 }
+
+# dash (lib/dash.zsh): my npm packages page instead of the npm home page
+(( ${+DASH_LINKS} )) && DASH_LINKS[npm]=https://www.npmjs.com/~bkness
