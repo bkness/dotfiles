@@ -30,3 +30,23 @@ On `chpwd` into a git repo, async-check `git log HEAD..origin/main --oneline`.
 If main has commits the current branch doesn't, fire a `zle -M` warning:
 "⚠️  main has N commits not yet on this branch. Pull from main?"
 Keep it async (&!) so it doesn't block prompt draw.
+
+## Self-cleaning house 🧽 (roadmap, 2026-09-30)
+The cockpit, extended to appliances: load everything, ship code, the house
+does the rest.
+
+1. Load the washer, dryer and dishwasher, and arm "remote start" on each
+   (the machines require it, so nothing runs by accident)
+2. `git push` → green victory flash → petty-style chain kicks off the
+   cycles through their APIs
+3. Each appliance flashes its own color when it finishes, plus a nag-style
+   notification ("Dishes are clean. Go unload them.")
+   - dishwasher → blue, washer → cyan, dryer → orange (pick later)
+4. `house` command: status of every appliance (running / done / time left)
+
+APIs to check when buying: Home Connect (Bosch, Siemens, Thermador,
+Gaggenau), Samsung SmartThings, LG ThinQ. A robot vacuum with an API
+(e.g. Roborock) could join as `clean`.
+
+Constraint: Govee is ~10 requests/min for the whole account, so appliance
+flashes go through the same `flash` cooldown.
