@@ -30,6 +30,34 @@ dash() {
   fi
   local url="${DASH_LINKS[$name]}"
   [[ -n "$url" ]] || { echo "  ❌ no dashboard named '$name'. Try: ${(ko)DASH_LINKS}"; return 1; }
+  _dash_open "$url"
+}
+
+# Chrome: if a tab for the same site is already open, switch to it instead of
+# piling up duplicates. Otherwise (or in another browser) open it normally.
+_dash_open() {
+  local url=$1 host=${${1#*://}%%/*}
+  if pgrep -xq "Google Chrome"; then
+    osascript - "$host" >/dev/null 2>&1 <<'AS' && return
+on run {theHost}
+  tell application "Google Chrome"
+    repeat with w in windows
+      set i to 0
+      repeat with t in tabs of w
+        set i to i + 1
+        if URL of t contains theHost then
+          set active tab index of w to i
+          set index of w to 1
+          activate
+          return
+        end if
+      end repeat
+    end repeat
+  end tell
+  error "no tab open for " & theHost
+end run
+AS
+  fi
   open "$url"
 }
 
