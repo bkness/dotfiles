@@ -418,3 +418,48 @@ FOCUS
 
 # dash (lib/dash.zsh): my npm packages page instead of the npm home page
 (( ${+DASH_LINKS} )) && DASH_LINKS[npm]=https://www.npmjs.com/~bkness
+
+# ---------------------------------------
+# petty — run the GitHub unfollow bot from the terminal (bkness/petty)
+# ---------------------------------------
+# petty [dry] [catchup] [confirm] [rebaseline]   start a run with those boxes ticked,
+#                                                wait for it, show what it did
+# petty log                                      the last run's result
+_PETTY_REPO=bkness/petty
+
+_petty_summary() {  # run-id
+  gh run view "$1" -R $_PETTY_REPO --log 2>/dev/null \
+    | sed 's/^[^	]*	[^	]*	//; s/^[0-9T:.-]*Z //' \
+    | grep -E "Catch-up|Followers:|New followers|followed back|not following back|unfollowed|unstarred|Hold issue|Issue created|DRY RUN|\[dry run\]|Can't read|Traceback|HTTP [45]" \
+    | sed 's/^/  /'
+  gh run view "$1" -R $_PETTY_REPO --json conclusion,url -q '"  → \(.conclusion) · \(.url)"'
+}
+
+# desc: Run petty (dry | catchup | confirm | rebaseline), wait, show the result
+petty() {
+  if [[ $1 == log ]]; then
+    local last=$(gh run list -R $_PETTY_REPO -L 1 --json databaseId -q '.[0].databaseId')
+    _petty_summary "$last"; return
+  fi
+  local -a flags; local a
+  for a in "$@"; do
+    case $a in
+      dry|dry-run)  flags+=(-f dry_run=true) ;;
+      catchup|catch-up) flags+=(-f catch_up=true) ;;
+      confirm)      flags+=(-f confirm=true) ;;
+      rebaseline)   flags+=(-f rebaseline=true) ;;
+      *) echo "  usage: petty [dry] [catchup] [confirm] [rebaseline] | petty log"; return 1 ;;
+    esac
+  done
+  local before=$(gh run list -R $_PETTY_REPO -L 1 --json databaseId -q '.[0].databaseId')
+  gh workflow run petty.yml -R $_PETTY_REPO "${flags[@]}" >/dev/null || return 1
+  echo "  😈 petty started${*:+ ($*)}, waiting…"
+  local id i
+  for i in {1..20}; do   # the new run takes a few seconds to appear
+    sleep 3
+    id=$(gh run list -R $_PETTY_REPO -L 1 --json databaseId -q '.[0].databaseId')
+    [[ $id != $before ]] && break
+  done
+  gh run watch "$id" -R $_PETTY_REPO --exit-status >/dev/null 2>&1
+  _petty_summary "$id"
+}
