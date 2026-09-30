@@ -66,6 +66,10 @@ All widgets are accessible via `Ctrl+P` (command palette) or their direct keybin
 | `Ctrl+X Ctrl+D` | Dashboards | Picker for Vercel, Stripe, Supabase, Resend… (reuses an open tab) |
 | `Ctrl+V` | Govee lights | Personal mode only |
 
+### Long pastes
+
+Paste a long one-liner and it lands broken into lines at `|`, `&&`, `||` and long `--flags` (with `\` continuations), so you can read it before pressing Enter. It runs exactly the same. **Ctrl+_** undoes the wrap; `PASTE_WRAP=0` turns it off.
+
 ### Secrets
 
 `secret set NAME` saves your clipboard to the macOS Keychain; `secret copy|get|ls|rm NAME` use it; `vsecret NAME` pushes it to the current folder's Vercel project and reads it back to prove it saved. Secrets are never typed, shown, or saved to history.
