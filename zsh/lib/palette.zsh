@@ -81,6 +81,13 @@ _palette_entries() {
   _palette_row "gh-nudge-hide" "git" "Stop GitHub nudges for this repo"
   _palette_row "gh-nudge-reset" "git" "Clear hushed GitHub nudges"
 
+  # --- petty (personal.zsh) ---
+  if (( $+functions[petty] )); then
+    _palette_row "petty dry" "petty" "Dry run: who would petty unfollow?"
+    _palette_row "petty catchup" "petty" "Find non-followers → review issue"
+    _palette_row "petty log" "petty" "Last petty run's result"
+  fi
+
   # --- Govee (personal.zsh) ---
   if (( $+functions[govee] )); then
     _palette_row "govee" "govee" "Interactive light controller (room + action picker)"
