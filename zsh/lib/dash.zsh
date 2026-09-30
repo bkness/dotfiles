@@ -1,7 +1,7 @@
 # ---------------------------------------
 # dash — open a service dashboard in the browser
 # ---------------------------------------
-# dash            fzf picker of every dashboard
+# dash            fzf picker of every dashboard (or Ctrl+X Ctrl+D)
 # dash vercel     open one directly (Tab completes the names)
 # Add or override links in personal.zsh: DASH_LINKS[name]=url
 
@@ -63,3 +63,12 @@ AS
 
 _dash() { _values 'dashboard' ${(k)DASH_LINKS} }
 (( $+functions[compdef] )) && compdef _dash dash
+
+# desc: Ctrl+X Ctrl+D — dashboard picker (a chord, so no single Ctrl key is used up)
+_dash_widget() {
+  zle -I
+  dash
+  zle reset-prompt
+}
+zle -N _dash_widget
+bindkey '^X^D' _dash_widget
