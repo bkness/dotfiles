@@ -81,6 +81,12 @@ _palette_entries() {
   _palette_row "gh-nudge-hide" "git" "Stop GitHub nudges for this repo"
   _palette_row "gh-nudge-reset" "git" "Clear hushed GitHub nudges"
 
+  # --- site (personal.zsh) ---
+  if (( $+functions[site] )); then
+    _palette_row "site list" "site" "Client sites + unpublished changes"
+    _palette_row "site new" "site" "Start a client site from a playbook"
+  fi
+
   # --- petty (personal.zsh) ---
   if (( $+functions[petty] )); then
     _palette_row "petty dry" "petty" "Dry run: who would petty unfollow?"
