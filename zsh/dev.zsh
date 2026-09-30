@@ -167,11 +167,13 @@ gbr() {
 
 # desc: Opens fuzzy, jumps instantly anywhere you've been
 j() {
-  if command -v zoxide >/dev/null; then
-    cd "$(zoxide query -i)"
-  else
+  if ! command -v zoxide >/dev/null; then
     echo "❌ zoxide not found. Please install zoxide or use cd manually."
+    return 1
   fi
+  local dest
+  dest=$(zoxide query -i) || return   # Esc in the picker: stay put
+  cd "$dest"
   add-recent
   refresh-dev-cache
 }
