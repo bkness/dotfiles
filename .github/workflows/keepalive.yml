@@ -9,6 +9,7 @@
 # run, so GitHub emails you when a demo is down.
 #
 # Add a site: append its URL to SITES. Use a page that touches the database.
+# Lines starting with # inside SITES are notes and are skipped.
 
 name: keepalive
 
@@ -31,7 +32,9 @@ jobs:
         run: |
           failed=0
           while IFS= read -r url; do
-            [ -z "$url" ] && continue
+            # SITES is a YAML block, so its comments arrive as lines too
+            url="${url#"${url%%[![:space:]]*}"}"   # trim leading spaces
+            case "$url" in ''|'#'*) continue ;; esac
             # Render free instances take up to ~60s to wake; retry once.
             code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 120 --retry 1 --retry-delay 10 "$url" || echo 000)
             echo "$url → $code"
