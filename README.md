@@ -65,6 +65,10 @@ All widgets are accessible via `Ctrl+P` (command palette) or their direct keybin
 | `Ctrl+R` | History search | [Atuin](https://atuin.sh) full-history search, if installed (`brew install atuin`) |
 | `Ctrl+V` | Govee lights | Personal mode only |
 
+### Secrets
+
+`secret set NAME` saves your clipboard to the macOS Keychain; `secret copy|get|ls|rm NAME` use it; `vsecret NAME` pushes it to the current folder's Vercel project and reads it back to prove it saved. Secrets are never typed, shown, or saved to history.
+
 ## GitHub Workflow (Ctrl+G)
 
 The centerpiece of this config. From any git repo:
