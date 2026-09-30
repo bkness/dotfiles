@@ -15,6 +15,7 @@ setopt NO_BEEP
 setopt PROMPT_SUBST
 stty -ixon 2>/dev/null  # free up Ctrl+Q from flow control
 setopt INTERACTIVE_COMMENTS
+setopt IGNORE_EOF          # Ctrl+D never closes the shell by accident (Ctrl+X chords); leave with `bye`
 
 [[ -f ~/.secrets ]] && source ~/.secrets
 
