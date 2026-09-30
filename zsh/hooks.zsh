@@ -96,6 +96,7 @@ add-zsh-hook chpwd _hook_chpwd
 # ~20s, so it runs in the background and writes its one-line alert to a file;
 # the next prompt prints it instead of scribbling over the line you're typing.
 _FORGED_ALERT="${TMPDIR:-/tmp}/forged-alert.$$"
+: >| "$_FORGED_ALERT"   # `exec zsh` keeps the PID: drop the old shell's leftover alert
 
 _forged_autoscan() {
   [[ -f package-lock.json ]] || return
@@ -124,6 +125,7 @@ _forged_alert_cleanup() { rm -f "$_FORGED_ALERT" }
 # Each warning shows once per repo until it changes, so cd-ing around inside a
 # stale repo doesn't repeat it.
 _STALE_ALERT="${TMPDIR:-/tmp}/git-stale-alert.$$"
+: >| "$_STALE_ALERT"    # `exec zsh` keeps the PID: drop the old shell's leftover alert
 _STALE_LAST=""
 
 _git_stale_check() {
@@ -140,6 +142,14 @@ _git_stale_alert() {
   : >"$_STALE_ALERT"
   local msg="${(F)lines[2,-1]}"
   [[ -n "$msg" ]] || return
+  # Re-count with local refs right before printing (no fetch): a pull may
+  # have landed while the background check ran, and a stale "run git pull"
+  # right after pulling is worse than no warning
+  local branch=${${msg#*⚠️  }%% *}
+  if [[ -n $branch ]] && git -C "${lines[1]}" rev-parse -q --verify "origin/$branch" >/dev/null 2>&1; then
+    local behind=$(git -C "${lines[1]}" rev-list --count "HEAD..origin/$branch" 2>/dev/null)
+    [[ ${behind:-0} -gt 0 ]] || return
+  fi
   local key="${lines[1]}:$msg"
   [[ "$key" == "$_STALE_LAST" ]] && return
   _STALE_LAST="$key"
