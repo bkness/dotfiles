@@ -3,13 +3,14 @@
 # ---------------------------------------
 # Govee lights, the Forged site status pushes, the shell open/close lifecycle
 # and `workmode` all assume this one machine: its light MAC addresses, the
-# local govee server, the 3-monitor layout, and tokens in ~/.secrets.
+# local govee server, the ASUS + MacBook layout, and tokens in ~/.secrets.
 # .zshrc loads this file only when ~/.secrets sets FORGED_PERSONAL=1, so a
 # fresh `forged init` install on someone else's Mac skips it.
 # Govee globals
 GOVEE_OFFICE="6F:1C:60:74:F4:5B:55:F0"
-GOVEE_MAIN="72:50:C6:35:33:33:59:46"
+GOVEE_MAIN="72:50:C6:35:33:33:59:46"  # lightbars: off the wall and unplugged
 GOVEE_OL_1="10:CE:60:74:F4:5E:18:26"
+GOVEE_LIVING_LEFT="$GOVEE_OL_1"   # left as seen from the desk; confirmed by blinking it
 GOVEE_OL_2="6E:3D:60:74:F4:55:DB:44"
 GOVEE_LIVING_RIGHT="$GOVEE_OL_2"  # right as seen from the desk; confirmed by blinking it
 GOVEE_KITCHEN_1="38:BF:60:74:F4:5E:91:20"
@@ -23,7 +24,7 @@ GOVEE_DREAMVIEW="3B:03:CF:36:39:34:24:3C"
 _govee_boot() {
   local model="${1:-H6008}"
   shift
-  local lights=("$@")
+  local lights=("$@") light
 
   for light in "${lights[@]}"; do
     curl -s -m 3 -X PUT "http://localhost:8000/lights/${light}/control?model=${model}" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '{"name": "turn", "value": "on"}' >/dev/null &!
@@ -62,7 +63,7 @@ govee() {
   while true; do
     local room action
 
-    room=$(printf "office\nmain\nliving room\nkitchen\nhallway\ndreamview\nall\n— exit —" | \
+    room=$(printf "office\nkitchen\nkitchen middle\nliving room\nliving left\nliving right\nhallway\ndreamview\nall\n— exit —" | \
       fzf "${FZF_THEME[@]}" --prompt="💡 room > " --height=50% --border=rounded --no-sort)
     [[ -z "$room" || "$room" == "— exit —" ]] && return
 
@@ -73,17 +74,19 @@ govee() {
 
       case "$room" in
         office)        _govee_apply "$GOVEE_OFFICE"    "H6008" "$action" ;;
-        main)          _govee_apply "$GOVEE_OFFICE"    "H6008" "$action"
-                      _govee_apply "$GOVEE_MAIN"      "H610A" "$action" ;;
         "living room") _govee_apply "$GOVEE_OL_1"      "H6008" "$action"
                       _govee_apply "$GOVEE_OL_2"      "H6008" "$action" ;;
+        "living left")  _govee_apply "$GOVEE_LIVING_LEFT"    "H6008" "$action" ;;
+        "living right") _govee_apply "$GOVEE_LIVING_RIGHT"   "H6008" "$action" ;;
+        "kitchen middle") _govee_apply "$GOVEE_KITCHEN_MIDDLE" "H6008" "$action" ;;
         kitchen)       _govee_apply "$GOVEE_KITCHEN_1" "H6008" "$action"
                       _govee_apply "$GOVEE_KITCHEN_2" "H6008" "$action"
                       _govee_apply "$GOVEE_KITCHEN_3" "H6008" "$action" ;;
         hallway)       _govee_apply "$GOVEE_HALLWAY"   "H6008" "$action" ;;
         dreamview)     _govee_apply "$GOVEE_DREAMVIEW" "H6199" "$action" ;;
+        # 8 lights: most of Govee's ~10 requests/minute, so no flash right after
         all)           for pair in \
-                         "$GOVEE_OFFICE:H6008" "$GOVEE_MAIN:H610A" \
+                         "$GOVEE_OFFICE:H6008" \
                          "$GOVEE_OL_1:H6008"   "$GOVEE_OL_2:H6008" \
                          "$GOVEE_KITCHEN_1:H6008" "$GOVEE_KITCHEN_2:H6008" "$GOVEE_KITCHEN_3:H6008" \
                          "$GOVEE_HALLWAY:H6008" "$GOVEE_DREAMVIEW:H6199"; do
@@ -267,32 +270,6 @@ _shell_open() {
   { workmode } &!   # in the background, so the first prompt isn't held up
 }
 
-_shell_current() {
-  local state
-  local hour=$(date +%H%M)
-    if [[ $hour -ge 1800 || $hour -lt 600 ]]; then
-      _govee_color "H610A" "$GOVEE_MAIN" 255 0 128 >/dev/null &!
-    else
-      _govee_color "H6008" "$GOVEE_OFFICE" 0 100 255 >/dev/null &!
-    fi
-  state=$(osascript -e 'tell application "Music" to get player state' 2>/dev/null)
-
-  if [[ "$state" != "playing" ]]; then
-    osascript -e 'display notification "Music is paused ⏸️" with title "Apple Music Status"'
-    return
-  fi
-
-  local track artist
-  track=$(osascript -e 'tell application "Music" to get name of current track' 2>/dev/null)
-  artist=$(osascript -e 'tell application "Music" to get artist of current track' 2>/dev/null)
-
-  if [[ -n "$track" && -n "$artist" ]]; then
-    osascript -e "display notification \"$track by $artist ▶️\" with title \"Now Playing 🎵\""
-  else
-    osascript -e 'display notification "Station is playing 🎶" with title "Apple Music Status"'
-  fi
-}
-
 _shell_close() {
   [[ -n "$CLAUDECODE" ]] && return
   rm -f $_SHELLS_DIR/$$
@@ -311,12 +288,7 @@ scan() {
 }
 
 
-# Govee light controls via interactive menu
-# Use: govee() to open fzf menu, pick room + action
-# All quick aliases (mon, moff, kon, lpink, etc.) are covered by the menu
-
-alias goveestat='curl -s http://localhost:8000/lights/ -H "x-api-key: $GOVEE_SERVER_KEY" | python3 -m json.tool'
-
+# Govee server (~/dev/projects/govee-automation). `goveestat` (an abbr) lists the lights.
 pyserv() {
   local log="/tmp/govee-server.log"
   (cd ~/dev/projects/govee-automation && source .venv/bin/activate && uvicorn app.main:app --reload) > "$log" 2>&1 &!
@@ -325,13 +297,11 @@ pyserv() {
   grep -m1 "Uvicorn running" "$log" 2>/dev/null | sed 's/^INFO:     //' || echo "   http://localhost:8000"
 }
 
-killpy() { 
-  kill -9 $(lsof -ti :8000) 2>/dev/null
+killpy() {
+  local pids=$(lsof -ti :8000)
+  [[ -n "$pids" ]] || { echo "  govee server isn't running"; return; }
+  kill -9 ${=pids}
   echo "🔴 govee server terminated..."
-}
-
-_minimize() {
-  osascript -e "tell application \"System Events\" to set miniaturized of window 1 of process \"$1\" to true"
 }
 
 # workmode — ASUS (1920x1080, main, left) + MacBook (1440x900, right).

@@ -24,31 +24,25 @@ To test a function in isolation, source only its file and call it directly.
 
 ## Architecture
 
-`.zshrc` is a pure loader — no logic lives there. It sources modules in this order:
+`.zshrc` is a pure loader — no logic lives there. Load order:
 
 ```
 .zshrc
-  → plugins.zsh          # zinit external plugins (fzf-tab, autosuggestions, syntax-highlighting)
-  → lib/plugin-registry.zsh  # PLUGIN_REGISTRY and PLUGIN_PRIORITY assoc arrays
-  → plugins/project/*.zsh    # per-language boot plugins (auto-loaded)
-  → lib/*.zsh                # cache, detect, project (lib utilities)
-  → ZSH_MODULES loop:        # env → tools → hooks → aliases → lib/cache → dev → starship
+  → plugins.zsh                  # zinit plugins; skipped with a hint if zinit is missing
+  → lib/plugin-registry.zsh      # PLUGIN_REGISTRY and PLUGIN_PRIORITY
+  → hooks.zsh                    # dispatcher first: project plugins call register_hook
+  → plugins/project/*.zsh        # per-language boot plugins
+  → lib/*.zsh                    # widgets + helpers (palette, github, finder, music, dash…)
+  → env → tools → aliases → dev → starship
+  → plugins/theme/neon-cockpit.zsh
+  → personal.zsh                 # only if ~/.secrets sets FORGED_PERSONAL=1
 ```
+
+`personal.zsh` holds everything tied to Brandon's Mac (Govee MACs, the status API token, the ASUS + MacBook layout). Keep machine-specific code there so `forged init` installs stay portable. Claude Code's shells set `CLAUDECODE=1`; the shell open/close hooks skip them.
 
 ## Module Responsibilities
 
-| File | Responsibility |
-|------|---------------|
-| `env.zsh` | Exports, setopts, lazy NVM, FZF color theme |
-| `tools.zsh` | fzf config, fzf-tab zstyles, custom Ctrl-R widget, zoxide lazy-load |
-| `hooks.zsh` | Hook dispatcher (`register_hook`/`fire_hook`), `chpwd` integration, `project_detect()` |
-| `aliases.zsh` | Git shortcuts and shell aliases |
-| `dev.zsh` | `dev`, `newproj`, `chbr`, `cmst`, `gbr`, `j`, `p`, `pr` workflow commands |
-| `starship.zsh` | Lazy-loads starship on first prompt draw |
-| `lib/cache.zsh` | `~/.dev-projects-cache` and `~/.dev-recent` via `refresh-dev-cache`/`add-recent` |
-| `lib/plugin-registry.zsh` | `register_plugin` / `plugin_exists` — registry for boot plugins |
-| `lib/project.zsh` | Project templates (node/python/rust), `project_ui` dashboard |
-| `lib/detect.zsh` | `heredoc_lint` utility |
+See the table in `README.md`.
 
 ## Plugin System
 
@@ -71,7 +65,9 @@ Plugins live in `plugins/project/<lang>.zsh`. Each file must:
 
 - **No logic in `.zshrc`** — it only sources files.
 - **Lazy-load expensive tools** — NVM, zoxide, and starship all use deferred init patterns.
-- **`$DEV_ROOT`** (`~/dev/projects`) is the root for all project discovery; always check it is set before running cache/discovery functions.
+- **`$DEV_ROOT`** (`~/dev/projects`) is the root for all project discovery; it may not exist on a fresh machine, so discovery functions must tolerate that.
+- **Anything with nested quotes or several commands is a function, not an abbr.** `abbr add` rewrites `abbreviations` and has mangled quotes before (and once emptied it).
+- **Govee allows ~10 requests a minute for the whole account.** Send light commands one at a time and space out tests.
 - **`$FZF_THEME`** is defined in `env.zsh` and referenced by pickers in `lib/project.zsh`. Always pass it as `$FZF_THEME` rather than inlining colors.
 
 ## Known Issues / WIP Areas

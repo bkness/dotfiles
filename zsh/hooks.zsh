@@ -175,9 +175,10 @@ _git_nag_pre() {
 }
 
 _git_nag_post() {
+  local exit_code=$?   # first line: anything before this resets $?
   [[ $_GIT_NAG_PUSH -eq 1 ]] || return
   _GIT_NAG_PUSH=0
-  if [[ $? -eq 0 ]]; then
+  if (( exit_code == 0 )); then
     echo "\n  \e[33m⚠  Pushed. Now close that branch before it haunts you forever.\e[0m\n"
   else
     echo "\n  \e[31m✗  Push failed. Fix it before you forget what you were doing.\e[0m\n"

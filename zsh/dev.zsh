@@ -121,6 +121,7 @@ dev() {
   refresh-dev-cache
 
   # Project detection and boot
+  local type
   type=$(project_detect)
 
   if [[ "$type" == "unknown" ]]; then
@@ -159,7 +160,8 @@ cm() {
 # desc: Fuzzy branch switching  
 gbr() {
   local branch
-  branch=$(git branch --all | sed 's/^[* ]*//' | fzf) || return
+  # skip the "remotes/origin/HEAD -> origin/main" pointer line
+  branch=$(git branch --all | sed 's/^[* ]*//' | grep -v ' -> ' | fzf) || return
   git switch "${branch#remotes/origin/}"
   refresh-dev-cache
   add-recent
@@ -208,14 +210,16 @@ bindkey '^J' _jump_widget
 p() {
   command -v fzf >/dev/null || return 1
   command -v fd >/dev/null || return 1
-    
-  cd "$(
+
+  local dest
+  dest=$(
     fd -t d -d 1 . "$DEV_ROOT" \
     | fzf --height 40% --reverse --border \
           --prompt="Projects > " \
           --preview 'printf "Selected: %s\n\n" {} && eza -la --icons -1 {}' \
           --preview-window=right:50%
-  )"  
+  ) || return   # Esc: stay put (and don't let `pr` open VS Code here)
+  cd "$dest" || return
   add-recent
   refresh-dev-cache
 }
@@ -278,7 +282,7 @@ fi
 # Dev utilities
 # ---------------------------------------
 
-# #desc: mkdir + cd in one step
+# desc: mkdir + cd in one step
 take() {
   mkdir -p "$1" && cd "$1"
 }
