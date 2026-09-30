@@ -264,20 +264,7 @@ _shell_open() {
   (( prev == 0 )) || return
   mkdir /tmp/boot_once_$(date +%Y%m%d) 2>/dev/null || return
   sleep 3
-  shellboot
-}
-
-# desc: Full startup: online badge, Music, Govee server, lights, workmode windows
-# Runs by itself on the first terminal of the day; run it by hand to test.
-shellboot() {
-  online &!
-  _push_shell_status &!
-  local version=$(forged version 2>/dev/null | sed 's/forged-cli v//' || echo "unknown")
-  local msg="● online | v$version | lights on | music up"
-  [[ $(osascript -e 'tell application "Music" to get player state' 2>/dev/null) != "playing" ]] && \
-    osascript -e 'open location "musics://music.apple.com/us/station/brandons-station/ra.u-40787829f08b63e81abb70ff757aa95f"' &!
-  osascript -e "display notification \"$msg\" with title \"Shell opened\"" &!
-  { workmode --force } &!
+  { workmode } &!   # in the background, so the first prompt isn't held up
 }
 
 _shell_current() {
@@ -357,6 +344,8 @@ WORKMODE_TABS=(
   "https://www.youtube.com"
 )
 
+# desc: Start the cockpit: online badge, Music, Govee server, lights, windows
+# Runs by itself on the first terminal of the day; type `workmode` any time.
 workmode() {
   local force=0
   [[ "$1" == "--force" || "$1" == "-f" ]] && force=1
@@ -365,6 +354,14 @@ workmode() {
     [[ -f /tmp/workmode.lock ]] && echo "workmode already running" && return
   fi
   touch /tmp/workmode.lock
+
+  # Online badge, Music station (unless something's playing), notification
+  online &!
+  _push_shell_status &!
+  local version=$(forged version 2>/dev/null | sed 's/forged-cli v//' || echo "unknown")
+  [[ $(osascript -e 'tell application "Music" to get player state' 2>/dev/null) != "playing" ]] && \
+    osascript -e 'open location "musics://music.apple.com/us/station/brandons-station/ra.u-40787829f08b63e81abb70ff757aa95f"' &!
+  osascript -e "display notification \"● online | v$version | lights on | music up\" with title \"Workmode\"" &!
 
   # Govee server, then the same 3 lights the git flash uses
   if ! lsof -ti :8000 >/dev/null 2>&1; then

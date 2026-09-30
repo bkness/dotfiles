@@ -29,8 +29,7 @@ _palette_entries() {
   _palette_row "project_ui_widget" "widget" "Project dashboard"
   _palette_row "dash" "util" "Open a service dashboard (Vercel, Resend, npm, Render…)"
   (( ${+widgets[atuin-search]} )) && _palette_row "atuin-search" "widget" "Search shell history (Ctrl+R)"
-  (( $+functions[workmode] )) && _palette_row "workmode" "cmd" "Govee server + lights, iTerm/VS Code on the ASUS, Chrome on the MacBook"
-  (( $+functions[shellboot] )) && _palette_row "shellboot" "cmd" "Full startup: online, Music, Govee server, lights, workmode"
+  (( $+functions[workmode] )) && _palette_row "workmode" "cmd" "Start the cockpit: online, Music, Govee server, lights, windows"
 
   # --- Shell ---
   _palette_row "reload" "shell" "Restart shell"
