@@ -17,6 +17,8 @@ GOVEE_KITCHEN_1="38:BF:60:74:F4:5E:91:20"
 GOVEE_KITCHEN_2="36:5E:60:74:F4:48:8A:4A"
 GOVEE_KITCHEN_3="74:F3:60:74:F4:5B:66:7A"
 GOVEE_KITCHEN_MIDDLE="$GOVEE_KITCHEN_3"  # confirmed by blinking it, 2026-09-30
+GOVEE_KITCHEN_RIGHT="$GOVEE_KITCHEN_1"   # confirmed by blinking it
+GOVEE_KITCHEN_LEFT="$GOVEE_KITCHEN_2"    # the remaining one (middle + right confirmed)
 GOVEE_HALLWAY="18:C5:60:74:F4:40:62:10"
 GOVEE_DREAMVIEW="3B:03:CF:36:39:34:24:3C"
 
@@ -59,44 +61,59 @@ _govee_apply() {
 }
 
 
+# The Ctrl+V menu. Rooms with more than one bulb open a second picker, so one
+# bulb costs one request instead of the whole room's worth.
+# _govee_room_lights <room> prints "label|device|model" per light.
+_govee_room_lights() {
+  case "$1" in
+    office)      print -l "office|$GOVEE_OFFICE|H6008" ;;
+    kitchen)     print -l "kitchen left|$GOVEE_KITCHEN_LEFT|H6008" \
+                          "kitchen middle|$GOVEE_KITCHEN_MIDDLE|H6008" \
+                          "kitchen right|$GOVEE_KITCHEN_RIGHT|H6008" ;;
+    "living room") print -l "living left|$GOVEE_LIVING_LEFT|H6008" \
+                            "living right|$GOVEE_LIVING_RIGHT|H6008" ;;
+    hallway)     print -l "hallway|$GOVEE_HALLWAY|H6008" ;;
+    dreamview)   print -l "dreamview|$GOVEE_DREAMVIEW|H6199" ;;
+    everything)  local r; for r in office kitchen "living room" hallway dreamview; do _govee_room_lights "$r"; done ;;
+  esac
+}
+
 govee() {
+  local _fzf=("${FZF_THEME[@]}" --height=50% --border=rounded --no-sort)
+  # Declared once: re-running `local` on a set variable prints it
+  local room pick action line label device model
+  local -a lights
   while true; do
-    local room action
+    pick=""
 
-    room=$(printf "office\nkitchen\nkitchen middle\nliving room\nliving left\nliving right\nhallway\ndreamview\nall\n— exit —" | \
-      fzf "${FZF_THEME[@]}" --prompt="💡 room > " --height=50% --border=rounded --no-sort)
+    room=$(printf "%s\n" office "kitchen ›" "living room ›" hallway dreamview everything "— exit —" | \
+      fzf "${_fzf[@]}" --prompt="💡 room > ")
     [[ -z "$room" || "$room" == "— exit —" ]] && return
+    room=${room% ›}
+    lights=("${(@f)$(_govee_room_lights "$room")}")
 
-    action=$(printf "on\noff\npink\nblue\nred\nwhite\ngreen\npurple\n← back" | \
-      fzf "${FZF_THEME[@]}" --prompt="⚡ action > " --height=50% --border=rounded --no-sort)
+    # Second level: the whole room or one bulb
+    if (( ${#lights} > 1 )) && [[ $room != everything ]]; then
+      pick=$(printf "%s\n" "all $room" "${lights[@]%%|*}" "← back" | \
+        fzf "${_fzf[@]}" --prompt="💡 $room > ")
+      [[ -z "$pick" ]] && return
+      [[ "$pick" == "← back" ]] && continue
+      [[ "$pick" == "all $room" ]] || lights=("${(@M)lights:#$pick|*}")
+    fi
+
+    action=$(printf "%s\n" on off pink blue red white green purple "← back" | \
+      fzf "${_fzf[@]}" --prompt="⚡ action > ")
     [[ -z "$action" ]] && return
     [[ "$action" == "← back" ]] && continue
 
-      case "$room" in
-        office)        _govee_apply "$GOVEE_OFFICE"    "H6008" "$action" ;;
-        "living room") _govee_apply "$GOVEE_OL_1"      "H6008" "$action"
-                      _govee_apply "$GOVEE_OL_2"      "H6008" "$action" ;;
-        "living left")  _govee_apply "$GOVEE_LIVING_LEFT"    "H6008" "$action" ;;
-        "living right") _govee_apply "$GOVEE_LIVING_RIGHT"   "H6008" "$action" ;;
-        "kitchen middle") _govee_apply "$GOVEE_KITCHEN_MIDDLE" "H6008" "$action" ;;
-        kitchen)       _govee_apply "$GOVEE_KITCHEN_1" "H6008" "$action"
-                      _govee_apply "$GOVEE_KITCHEN_2" "H6008" "$action"
-                      _govee_apply "$GOVEE_KITCHEN_3" "H6008" "$action" ;;
-        hallway)       _govee_apply "$GOVEE_HALLWAY"   "H6008" "$action" ;;
-        dreamview)     _govee_apply "$GOVEE_DREAMVIEW" "H6199" "$action" ;;
-        # 8 lights: most of Govee's ~10 requests/minute, so no flash right after
-        all)           for pair in \
-                         "$GOVEE_OFFICE:H6008" \
-                         "$GOVEE_OL_1:H6008"   "$GOVEE_OL_2:H6008" \
-                         "$GOVEE_KITCHEN_1:H6008" "$GOVEE_KITCHEN_2:H6008" "$GOVEE_KITCHEN_3:H6008" \
-                         "$GOVEE_HALLWAY:H6008" "$GOVEE_DREAMVIEW:H6199"; do
-                         _govee_apply "${pair%%:*}" "${pair##*:}" "$action"
-                         sleep 0.3
-                       done ;;
-      esac
-
-      _GOVEE_MSG="  💡 $room → $action"
+    # One request per bulb, one at a time (Govee: ~10 requests/minute per account)
+    for line in "${lights[@]}"; do
+      IFS='|' read -r label device model <<<"$line"
+      _govee_apply "$device" "$model" "$action"
+      (( ${#lights} > 1 )) && sleep 0.3
     done
+    _GOVEE_MSG="  💡 ${pick:-$room} → $action"
+  done
 }
 _govee_widget() {
   zle -I
