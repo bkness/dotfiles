@@ -46,6 +46,7 @@ abbr "pixel"="system_profiler SPDisplaysDataType | grep -E \"Resolution|Position
 abbr "safe"="zsh -f"
 abbr "sandbox"="open ~/dev/tools/js-sandbox.html"
 abbr "str"="dash stripe"
+abbr "supa"="dash supabase"
 abbr "sz"="source ~/.zshrc"
 abbr "vima"="vim ~/dev/dotfiles/zsh/aliases.zsh"
 abbr "vimaa"="vim ~/dev/dotfiles/zsh/abbreviations"
