@@ -28,24 +28,26 @@ _palette_entries() {
   _palette_row "_snippet_widget" "widget" "Insert snippet (Ctrl+S)"
   _palette_row "project_ui_widget" "widget" "Project dashboard"
   (( ${+widgets[atuin-search]} )) && _palette_row "atuin-search" "widget" "Search shell history (Ctrl+R)"
-  _palette_row "workmode" "cmd" "Start Govee server, arrange iTerm2 + open VS Code"
+  (( $+functions[workmode] )) && _palette_row "workmode" "cmd" "Start Govee server, arrange iTerm2 + open VS Code"
 
   # --- Shell ---
-  _palette_row "reload" "shell" "Restart shell (decrements counter)"
+  _palette_row "reload" "shell" "Restart shell"
   _palette_row "sz" "shell" "Soft reload (source .zshrc, no restart)"
   _palette_row "safe" "shell" "Clean shell session (no config)"
-  _palette_row "bye" "shell" "Clean exit + fires offline"
+  _palette_row "bye" "shell" "Clean exit"
 
-  # --- Status ---
-  _palette_row "online" "status" "Manually set online"
-  _palette_row "offline" "status" "Manually set offline"
+  # --- Status (personal.zsh) ---
+  if (( $+functions[online] )); then
+    _palette_row "online" "status" "Manually set online"
+    _palette_row "offline" "status" "Manually set offline"
+  fi
 
   # --- Forged CLI ---
   _palette_row "forged gen pass" "forged" "Generate secure password"
   _palette_row "forged gen secret" "forged" "Generate 32-byte hex secret (JWT/API keys)"
   _palette_row "forged gen pin" "forged" "Generate 6-digit PIN"
   _palette_row "forged gen uuid" "forged" "Generate UUID v4"
-  _palette_row "scan" "forged" "Scan deps (malware, integrity, publishers) + push badge"
+  _palette_row "scan" "forged" "Scan deps (malware, integrity, publishers)"
   _palette_row "scan-repos" "forged" "Batch scan multiple repos"
   _palette_row "forged readme" "forged" "Interactive README generator"
 
@@ -74,12 +76,14 @@ _palette_entries() {
   _palette_row "gh-nudge-hide" "git" "Stop GitHub nudges for this repo"
   _palette_row "gh-nudge-reset" "git" "Clear hushed GitHub nudges"
 
-  # --- Govee ---
-  _palette_row "govee" "govee" "Interactive light controller (room + action picker)"
-  _palette_row "_govee_widget" "widget" "Govee light controls (Ctrl+V)"
-  _palette_row "pyserv" "govee" "Start the Govee API server"
-  _palette_row "killpy" "govee" "Stop the Govee API server"
-  _palette_row "goveestat" "govee" "Show all light states via local API"
+  # --- Govee (personal.zsh) ---
+  if (( $+functions[govee] )); then
+    _palette_row "govee" "govee" "Interactive light controller (room + action picker)"
+    _palette_row "_govee_widget" "widget" "Govee light controls (Ctrl+V)"
+    _palette_row "pyserv" "govee" "Start the Govee API server"
+    _palette_row "killpy" "govee" "Stop the Govee API server"
+    _palette_row "goveestat" "govee" "Show all light states via local API"
+  fi
 
   # --- GitHub ---
   _palette_row "_github_ui_widget" "widget" "GitHub dashboard (Ctrl+G)"
