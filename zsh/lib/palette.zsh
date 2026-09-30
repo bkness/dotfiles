@@ -27,7 +27,7 @@ _palette_entries() {
   _palette_row "_jump_widget" "widget" "Jump anywhere (Ctrl+J)"
   _palette_row "_snippet_widget" "widget" "Insert snippet (Ctrl+S)"
   _palette_row "project_ui_widget" "widget" "Project dashboard"
-  _palette_row "dash" "util" "Open a service dashboard (Vercel, Resend, npm, Render…)"
+  _palette_row "dash" "util" "Open a service dashboard: dash <name>, or Ctrl+X Ctrl+D"
   _palette_row "secret ls" "secret" "List secrets stored in the Keychain (names only)"
   _palette_row "secret set" "secret" "Save the clipboard to the Keychain as NAME"
   _palette_row "secret copy" "secret" "Copy a Keychain secret to the clipboard"

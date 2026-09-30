@@ -63,6 +63,7 @@ All widgets are accessible via `Ctrl+P` (command palette) or their direct keybin
 | `Ctrl+S` | Snippets | Insert a snippet from `zsh/snippets/` |
 | `Ctrl+]` | Music | Apple Music playback and stations; catalog search needs Apple Music API keys in `~/.secrets` |
 | `Ctrl+R` | History search | [Atuin](https://atuin.sh) full-history search, if installed (`brew install atuin`) |
+| `Ctrl+X Ctrl+D` | Dashboards | Picker for Vercel, Stripe, Supabase, Resend… (reuses an open tab) |
 | `Ctrl+V` | Govee lights | Personal mode only |
 
 ### Secrets
