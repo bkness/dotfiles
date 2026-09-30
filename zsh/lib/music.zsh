@@ -312,6 +312,23 @@ music_ui_stations() {
 }
 
 # Async starship cache update — runs in background on every prompt, zero latency
+# mplay / mnext / mprev — the same AppleScript the Ctrl+] widget uses. These
+# were abbrs, and rewrites of the abbreviations file had turned
+# `tell application "Music"` into `tell application \Music\`.
+_music_do() {  # applescript-command [seconds to wait for Music to switch]
+  osascript -e "tell application \"Music\" to $1" 2>/dev/null \
+    || { echo "  ⚠️  Music didn't respond (is it open? radio streams can't skip)"; return 1; }
+  sleep "${2:-0.3}"
+  echo "  ♫  $(_music_now_playing)"
+  _music_starship_update
+}
+# desc: Play/pause Apple Music
+mplay() { _music_do playpause }
+# desc: Next track
+mnext() { _music_do "next track" 0.8 }
+# desc: Previous track
+mprev() { _music_do "previous track" 0.8 }
+
 _music_starship_update() {
   {
     local info
