@@ -8,6 +8,7 @@
 # secret rm NAME      delete NAME
 # vsecret NAME        push NAME from the Keychain to this folder's Vercel
 #                     project (production), then read it back to prove it saved
+# vsecret --redeploy  redeploy this project's current production deployment
 #
 # Items live in your login Keychain under service "forged", account NAME.
 # Values only ever travel through the clipboard or a pipe, so nothing secret
@@ -24,6 +25,11 @@ secret() {
       [[ -n $name ]] || { echo "  usage: secret set NAME   (copy the value first)"; return 1; }
       val=$(pbpaste | tr -d '\r\n')
       (( ${#val} >= 8 )) || { echo "  ✗ clipboard is empty or too short. Copy the secret first."; return 1; }
+      # Secrets don't contain spaces; a copied command (e.g. "secret set NAME") does
+      if [[ $val == *' '* || $val == secret* || $val == vsecret* ]]; then
+        echo "  ✗ your clipboard holds a command, not a secret. Copy the value itself (e.g. whsec_…)."
+        return 1
+      fi
       security add-generic-password -U -s $_SECRET_SVC -a "$name" -w "$val" \
         || { echo "  ✗ Keychain didn't save it"; return 1; }
       print -n "" | pbcopy
@@ -56,6 +62,8 @@ secret() {
 
 # desc: Push a Keychain secret to this folder's Vercel project (production), verified
 vsecret() {
+  [[ $1 == --redeploy ]] && { _vsecret_redeploy; return }
+  [[ $1 == set ]] && shift   # forgive "vsecret set NAME"
   local name=$1 val got tmp
   [[ -n $name ]] || { echo "  usage: vsecret NAME   (run inside a Vercel-linked project)"; return 1; }
   [[ -f .vercel/project.json ]] || { echo "  ✗ this folder isn't linked to Vercel (run: vercel link)"; return 1; }
@@ -73,4 +81,15 @@ vsecret() {
     echo "  ✗ $name did NOT save on Vercel (it has ${#got} characters). Set it in the dashboard."
     return 1
   fi
+}
+
+_vsecret_redeploy() {
+  [[ -f .vercel/project.json ]] || { echo "  ✗ this folder isn't linked to Vercel"; return 1; }
+  local project url
+  project=$(sed -nE 's/.*"projectName":"([^"]+)".*/\1/p' .vercel/project.json)
+  url=$(vercel ls "$project" --prod 2>/dev/null | grep -oE 'https://[^ ]+\.vercel\.app' | head -1)
+  [[ -n $url ]] || { echo "  ✗ couldn't find the current production deployment"; return 1; }
+  echo "  Redeploying $project so it picks up the new values (about a minute)…"
+  vercel redeploy "$url" --target production >/dev/null 2>&1 \
+    && echo "  ✓ redeployed" || { echo "  ✗ redeploy failed; use the Vercel dashboard"; return 1; }
 }
