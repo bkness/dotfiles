@@ -463,3 +463,25 @@ petty() {
   gh run watch "$id" -R $_PETTY_REPO --exit-status >/dev/null 2>&1
   _petty_summary "$id"
 }
+
+# ---------------------------------------
+# site — sitebuilder's operator command, from any folder
+# ---------------------------------------
+# site list | new | edit <slug> ["change"] | preview | publish | undo | log
+SITEBUILDER_DIR="$HOME/dev/projects/sitebuilder"
+
+# desc: Client sites: site list | new | edit <slug> "change" | preview | publish | undo | log
+site() {
+  [[ -d $SITEBUILDER_DIR ]] || { echo "⚒  sitebuilder isn't at $SITEBUILDER_DIR" >&2; return 1; }
+  (cd "$SITEBUILDER_DIR" && npm run -s site -- "$@")
+}
+
+# Tab: subcommands, then site folders
+_site() {
+  if (( CURRENT == 2 )); then
+    compadd list new edit preview publish undo log
+  elif (( CURRENT == 3 )) && [[ $words[2] != (list|new) ]]; then
+    compadd ${(f)"$(command ls -1 "$SITEBUILDER_DIR/sites" 2>/dev/null)"}
+  fi
+}
+compdef _site site
