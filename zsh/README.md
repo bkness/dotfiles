@@ -75,36 +75,38 @@ source ~/.zshrc
 
 ## Architecture
 
-`.zshrc` is a pure loader — no logic lives there. Modules are sourced in dependency order.
+`.zshrc` is a pure loader — no logic lives there. It sources, in order:
 
 ```
 .zshrc
-  └── lib/plugin-registry.zsh   # PLUGIN_REGISTRY + PLUGIN_PRIORITY assoc arrays
-  └── hooks.zsh                 # Hook dispatcher, chpwd integration, project_detect()
-  └── plugins/project/*.zsh     # Language boot plugins (node, python, rust, go)
-  └── lib/cache.zsh             # ~/.dev-projects-cache and ~/.dev-recent
-  └── lib/project.zsh           # fzf project dashboard UI
-  └── lib/detect.zsh            # heredoc_lint utility
-  └── env.zsh                   # Exports, PATH, setopts, lazy NVM, FZF theme
-  └── tools.zsh                 # fzf config, fzf-tab zstyles, Ctrl-R, zoxide
-  └── aliases.zsh               # Git + shell shortcuts
-  └── dev.zsh                   # Workflow commands (dev, newproj, chbr, gbr...)
-  └── starship.zsh              # Prompt (lazy-loaded on first draw)
+  ├── plugins.zsh               # zinit plugins (skipped with a hint if zinit is missing)
+  ├── lib/plugin-registry.zsh   # PLUGIN_REGISTRY + PLUGIN_PRIORITY
+  ├── hooks.zsh                 # hook dispatcher, chpwd, project_detect(), scan + stale-branch checks, git nags
+  ├── plugins/project/*.zsh     # language boot plugins (node, python, rust, go)
+  ├── lib/*.zsh                 # widgets and helpers (see below)
+  ├── env.zsh → tools.zsh → aliases.zsh → dev.zsh → starship.zsh
+  ├── plugins/theme/neon-cockpit.zsh
+  └── personal.zsh              # only when ~/.secrets sets FORGED_PERSONAL=1
 ```
 
 ### Module Responsibilities
 
 | File | Responsibility |
 |------|---------------|
-| `env.zsh` | Exports, setopts, lazy NVM, FZF color theme |
-| `tools.zsh` | fzf config, fzf-tab zstyles, custom Ctrl-R widget, zoxide lazy-load |
-| `hooks.zsh` | Hook dispatcher (`register_hook`/`fire_hook`), `chpwd` integration, `project_detect()` |
-| `aliases.zsh` | Git shortcuts and shell aliases |
-| `dev.zsh` | `dev`, `newproj`, `chbr`, `cmst`, `gbr`, `j`, `p`, `pr` workflow commands |
+| `env.zsh` | Exports, setopts, `~/.secrets`, lazy NVM, `$EDITOR` (VS Code or vim), FZF theme |
+| `tools.zsh` | History settings, fzf keybindings, `fcd`, project dashboard widget |
+| `hooks.zsh` | `register_hook`/`fire_hook`, `chpwd`, `project_detect()`, auto venv/nvm, background `forged scan --changed`, stale-branch warning, git commit/push nags |
+| `aliases.zsh` | Shell aliases, `reload`, `scan`, `gfix` / `gundo` / `gsync` |
+| `dev.zsh` | `dev`, `newproj`, `cb`, `cm`, `gbr`, `j`, `p`, `pr`, `gcm`, `gcmpr`, `take`, `killport`, `ports`, `serve`, `envload` |
 | `starship.zsh` | Lazy-loads starship on first prompt draw |
-| `lib/cache.zsh` | `~/.dev-projects-cache` and `~/.dev-recent` via `refresh-dev-cache` / `add-recent` |
-| `lib/plugin-registry.zsh` | `register_plugin` / `plugin_exists` — registry for boot plugins |
-| `lib/project.zsh` | Project templates (node/python/rust), `project_ui` dashboard |
+| `personal.zsh` | Personal mode: Govee lights + git flash, status pushes, shell count, `workmode` |
+| `lib/palette.zsh` | Ctrl+P command palette |
+| `lib/github.zsh` | Ctrl+G GitHub dashboard |
+| `lib/finder.zsh` · `lib/explorer.zsh` · `lib/snippets.zsh` | Ctrl+F code finder · Ctrl+Q file explorer · Ctrl+S snippets |
+| `lib/music.zsh` | Ctrl+] Apple Music, `mplay` / `mnext` / `mprev` |
+| `lib/dash.zsh` | `dash`: open a service dashboard |
+| `lib/cache.zsh` | `~/.dev-projects-cache` and `~/.dev-recent` |
+| `lib/project.zsh` | Project templates, `project_ui` dashboard |
 | `lib/detect.zsh` | `heredoc_lint` utility |
 
 ---
@@ -130,8 +132,8 @@ Language boot plugins live in `plugins/project/<lang>.zsh`. Each one:
 | `p` | Fuzzy-pick any project folder |
 | `pr` | Pick a project and open in VS Code |
 | `j` | Jump anywhere you've been (zoxide) |
-| `chbr` | Create and switch to a new branch |
-| `cmst` | Switch to main or master |
+| `cb` | Create and switch to a new branch |
+| `cm` | Switch to main or master and pull |
 | `gbr` | Fuzzy-switch any branch |
 | `ll` | `eza -la --icons` |
 | `ls` | `eza --icons` |
@@ -140,8 +142,11 @@ Language boot plugins live in `plugins/project/<lang>.zsh`. Each one:
 | `..` | `cd ..` |
 | `safe` | Start zsh with no config loaded |
 | `reload` | Restart the shell |
-| Ctrl+R | Fuzzy search shell history |
-| Ctrl+G | Open project dashboard |
+| `dash` | Open a service dashboard (Vercel, Resend, npm…) |
+| Ctrl+P | Command palette |
+| Ctrl+G | GitHub dashboard |
+| Ctrl+F · Ctrl+Q · Ctrl+J · Ctrl+S | Code finder · file explorer · jump · snippets |
+| Ctrl+R | Shell history (Atuin) |
 
 ---
 
@@ -158,20 +163,9 @@ Language boot plugins live in `plugins/project/<lang>.zsh`. Each one:
 
 ## Roadmap
 
-**Active work:**
-- Fix broken `zstyle` blocks in `tools.zsh`
-- Fix `project_ui` / `project_ui_open` fzf pipeline in `lib/project.zsh`
-- Fix bare-word syntax error in `hooks.zsh` line 43
+See [`future-ideas.md`](future-ideas.md). Planned: per-project `.zshenv` overrides, `edit_file_in_project` (fuzzy file picker with bat preview).
 
-**Planned:**
-- `lib/github.zsh` — GitHub CLI dashboard (PRs, issues, branches from terminal)
-- `serve` / `killport` / `take` / `envload` utility commands
-- Go language boot plugin
-- Per-project `.zshenv` local overrides
-- `edit_file_in_project` — fuzzy file picker with bat preview inside any project
-
-**Long-term:**
-- This shell environment is the foundation for **[Forged CLI](https://github.com/RevenueWebs/forged-cli)** — a fully packaged CLI installer with preset selection, GitHub Actions automation, a security scanner, and a React GUI.
+**Long-term:** this shell is what **[Forged CLI](https://github.com/bkness/forged-cli)** installs: `npm install -g forged-cli && forged init`.
 
 ---
 

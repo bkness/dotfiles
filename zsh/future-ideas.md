@@ -37,8 +37,8 @@ does the rest.
 
 1. Load the washer, dryer and dishwasher, and arm "remote start" on each
    (the machines require it, so nothing runs by accident)
-2. `git push` → green victory flash → petty-style chain kicks off the
-   cycles through their APIs
+2. `house go` (a command, not `git push`: we push way too often) → victory
+   flash → the cycles start through their APIs
 3. Each appliance flashes its own color when it finishes, plus a nag-style
    notification ("Dishes are clean. Go unload them.")
    - dishwasher → blue, washer → cyan, dryer → orange (pick later)

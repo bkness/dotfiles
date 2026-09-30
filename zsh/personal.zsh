@@ -3,19 +3,22 @@
 # ---------------------------------------
 # Govee lights, the Forged site status pushes, the shell open/close lifecycle
 # and `workmode` all assume this one machine: its light MAC addresses, the
-# local govee server, the 3-monitor layout, and tokens in ~/.secrets.
+# local govee server, the ASUS + MacBook layout, and tokens in ~/.secrets.
 # .zshrc loads this file only when ~/.secrets sets FORGED_PERSONAL=1, so a
 # fresh `forged init` install on someone else's Mac skips it.
 # Govee globals
 GOVEE_OFFICE="6F:1C:60:74:F4:5B:55:F0"
-GOVEE_MAIN="72:50:C6:35:33:33:59:46"
+GOVEE_MAIN="72:50:C6:35:33:33:59:46"  # lightbars: off the wall and unplugged
 GOVEE_OL_1="10:CE:60:74:F4:5E:18:26"
+GOVEE_LIVING_LEFT="$GOVEE_OL_1"   # left as seen from the desk; confirmed by blinking it
 GOVEE_OL_2="6E:3D:60:74:F4:55:DB:44"
 GOVEE_LIVING_RIGHT="$GOVEE_OL_2"  # right as seen from the desk; confirmed by blinking it
 GOVEE_KITCHEN_1="38:BF:60:74:F4:5E:91:20"
 GOVEE_KITCHEN_2="36:5E:60:74:F4:48:8A:4A"
 GOVEE_KITCHEN_3="74:F3:60:74:F4:5B:66:7A"
 GOVEE_KITCHEN_MIDDLE="$GOVEE_KITCHEN_3"  # confirmed by blinking it, 2026-09-30
+GOVEE_KITCHEN_RIGHT="$GOVEE_KITCHEN_1"   # confirmed by blinking it
+GOVEE_KITCHEN_LEFT="$GOVEE_KITCHEN_2"    # the remaining one (middle + right confirmed)
 GOVEE_HALLWAY="18:C5:60:74:F4:40:62:10"
 GOVEE_DREAMVIEW="3B:03:CF:36:39:34:24:3C"
 
@@ -23,7 +26,7 @@ GOVEE_DREAMVIEW="3B:03:CF:36:39:34:24:3C"
 _govee_boot() {
   local model="${1:-H6008}"
   shift
-  local lights=("$@")
+  local lights=("$@") light
 
   for light in "${lights[@]}"; do
     curl -s -m 3 -X PUT "http://localhost:8000/lights/${light}/control?model=${model}" -H "x-api-key: $GOVEE_SERVER_KEY" -H "Content-Type: application/json" -d '{"name": "turn", "value": "on"}' >/dev/null &!
@@ -58,42 +61,59 @@ _govee_apply() {
 }
 
 
+# The Ctrl+V menu. Rooms with more than one bulb open a second picker, so one
+# bulb costs one request instead of the whole room's worth.
+# _govee_room_lights <room> prints "label|device|model" per light.
+_govee_room_lights() {
+  case "$1" in
+    office)      print -l "office|$GOVEE_OFFICE|H6008" ;;
+    kitchen)     print -l "kitchen left|$GOVEE_KITCHEN_LEFT|H6008" \
+                          "kitchen middle|$GOVEE_KITCHEN_MIDDLE|H6008" \
+                          "kitchen right|$GOVEE_KITCHEN_RIGHT|H6008" ;;
+    "living room") print -l "living left|$GOVEE_LIVING_LEFT|H6008" \
+                            "living right|$GOVEE_LIVING_RIGHT|H6008" ;;
+    hallway)     print -l "hallway|$GOVEE_HALLWAY|H6008" ;;
+    dreamview)   print -l "dreamview|$GOVEE_DREAMVIEW|H6199" ;;
+    everything)  local r; for r in office kitchen "living room" hallway dreamview; do _govee_room_lights "$r"; done ;;
+  esac
+}
+
 govee() {
+  local _fzf=("${FZF_THEME[@]}" --height=50% --border=rounded --no-sort)
+  # Declared once: re-running `local` on a set variable prints it
+  local room pick action line label device model
+  local -a lights
   while true; do
-    local room action
+    pick=""
 
-    room=$(printf "office\nmain\nliving room\nkitchen\nhallway\ndreamview\nall\n— exit —" | \
-      fzf "${FZF_THEME[@]}" --prompt="💡 room > " --height=50% --border=rounded --no-sort)
+    room=$(printf "%s\n" office "kitchen ›" "living room ›" hallway dreamview everything "— exit —" | \
+      fzf "${_fzf[@]}" --prompt="💡 room > ")
     [[ -z "$room" || "$room" == "— exit —" ]] && return
+    room=${room% ›}
+    lights=("${(@f)$(_govee_room_lights "$room")}")
 
-    action=$(printf "on\noff\npink\nblue\nred\nwhite\ngreen\npurple\n← back" | \
-      fzf "${FZF_THEME[@]}" --prompt="⚡ action > " --height=50% --border=rounded --no-sort)
+    # Second level: the whole room or one bulb
+    if (( ${#lights} > 1 )) && [[ $room != everything ]]; then
+      pick=$(printf "%s\n" "all $room" "${lights[@]%%|*}" "← back" | \
+        fzf "${_fzf[@]}" --prompt="💡 $room > ")
+      [[ -z "$pick" ]] && return
+      [[ "$pick" == "← back" ]] && continue
+      [[ "$pick" == "all $room" ]] || lights=("${(@M)lights:#$pick|*}")
+    fi
+
+    action=$(printf "%s\n" on off pink blue red white green purple "← back" | \
+      fzf "${_fzf[@]}" --prompt="⚡ action > ")
     [[ -z "$action" ]] && return
     [[ "$action" == "← back" ]] && continue
 
-      case "$room" in
-        office)        _govee_apply "$GOVEE_OFFICE"    "H6008" "$action" ;;
-        main)          _govee_apply "$GOVEE_OFFICE"    "H6008" "$action"
-                      _govee_apply "$GOVEE_MAIN"      "H610A" "$action" ;;
-        "living room") _govee_apply "$GOVEE_OL_1"      "H6008" "$action"
-                      _govee_apply "$GOVEE_OL_2"      "H6008" "$action" ;;
-        kitchen)       _govee_apply "$GOVEE_KITCHEN_1" "H6008" "$action"
-                      _govee_apply "$GOVEE_KITCHEN_2" "H6008" "$action"
-                      _govee_apply "$GOVEE_KITCHEN_3" "H6008" "$action" ;;
-        hallway)       _govee_apply "$GOVEE_HALLWAY"   "H6008" "$action" ;;
-        dreamview)     _govee_apply "$GOVEE_DREAMVIEW" "H6199" "$action" ;;
-        all)           for pair in \
-                         "$GOVEE_OFFICE:H6008" "$GOVEE_MAIN:H610A" \
-                         "$GOVEE_OL_1:H6008"   "$GOVEE_OL_2:H6008" \
-                         "$GOVEE_KITCHEN_1:H6008" "$GOVEE_KITCHEN_2:H6008" "$GOVEE_KITCHEN_3:H6008" \
-                         "$GOVEE_HALLWAY:H6008" "$GOVEE_DREAMVIEW:H6199"; do
-                         _govee_apply "${pair%%:*}" "${pair##*:}" "$action"
-                         sleep 0.3
-                       done ;;
-      esac
-
-      _GOVEE_MSG="  💡 $room → $action"
+    # One request per bulb, one at a time (Govee: ~10 requests/minute per account)
+    for line in "${lights[@]}"; do
+      IFS='|' read -r label device model <<<"$line"
+      _govee_apply "$device" "$model" "$action"
+      (( ${#lights} > 1 )) && sleep 0.3
     done
+    _GOVEE_MSG="  💡 ${pick:-$room} → $action"
+  done
 }
 _govee_widget() {
   zle -I
@@ -267,32 +287,6 @@ _shell_open() {
   { workmode } &!   # in the background, so the first prompt isn't held up
 }
 
-_shell_current() {
-  local state
-  local hour=$(date +%H%M)
-    if [[ $hour -ge 1800 || $hour -lt 600 ]]; then
-      _govee_color "H610A" "$GOVEE_MAIN" 255 0 128 >/dev/null &!
-    else
-      _govee_color "H6008" "$GOVEE_OFFICE" 0 100 255 >/dev/null &!
-    fi
-  state=$(osascript -e 'tell application "Music" to get player state' 2>/dev/null)
-
-  if [[ "$state" != "playing" ]]; then
-    osascript -e 'display notification "Music is paused ⏸️" with title "Apple Music Status"'
-    return
-  fi
-
-  local track artist
-  track=$(osascript -e 'tell application "Music" to get name of current track' 2>/dev/null)
-  artist=$(osascript -e 'tell application "Music" to get artist of current track' 2>/dev/null)
-
-  if [[ -n "$track" && -n "$artist" ]]; then
-    osascript -e "display notification \"$track by $artist ▶️\" with title \"Now Playing 🎵\""
-  else
-    osascript -e 'display notification "Station is playing 🎶" with title "Apple Music Status"'
-  fi
-}
-
 _shell_close() {
   [[ -n "$CLAUDECODE" ]] && return
   rm -f $_SHELLS_DIR/$$
@@ -311,12 +305,7 @@ scan() {
 }
 
 
-# Govee light controls via interactive menu
-# Use: govee() to open fzf menu, pick room + action
-# All quick aliases (mon, moff, kon, lpink, etc.) are covered by the menu
-
-alias goveestat='curl -s http://localhost:8000/lights/ -H "x-api-key: $GOVEE_SERVER_KEY" | python3 -m json.tool'
-
+# Govee server (~/dev/projects/govee-automation). `goveestat` (an abbr) lists the lights.
 pyserv() {
   local log="/tmp/govee-server.log"
   (cd ~/dev/projects/govee-automation && source .venv/bin/activate && uvicorn app.main:app --reload) > "$log" 2>&1 &!
@@ -325,13 +314,11 @@ pyserv() {
   grep -m1 "Uvicorn running" "$log" 2>/dev/null | sed 's/^INFO:     //' || echo "   http://localhost:8000"
 }
 
-killpy() { 
-  kill -9 $(lsof -ti :8000) 2>/dev/null
+killpy() {
+  local pids=$(lsof -ti :8000)
+  [[ -n "$pids" ]] || { echo "  govee server isn't running"; return; }
+  kill -9 ${=pids}
   echo "🔴 govee server terminated..."
-}
-
-_minimize() {
-  osascript -e "tell application \"System Events\" to set miniaturized of window 1 of process \"$1\" to true"
 }
 
 # workmode — ASUS (1920x1080, main, left) + MacBook (1440x900, right).

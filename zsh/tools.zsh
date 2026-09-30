@@ -56,27 +56,3 @@ project_ui_widget() {
 }
 
 zle -N project_ui_widget
-
-# # Preview command function for project dashboard
-# project_visuals_cmd() {
-#   if command -v eza >/dev/null; then
-#     echo "eza -la --icons --color=always {}"
-#   else
-#     echo "ls -la {}"
-#   fi
-# }
-
-# Git helper
-is_git_repo() {
-  git rev-parse --is-inside-work-tree >/dev/null 2>&1
-}
-
-  # Test preview command
-# project_visuals_cmd() {
-#   if is_git_repo; then
-#     echo "echo 'Git Repository Detected' && git status --short --color=always"
-#   else
-#     echo "echo 'No Git Repository' && ls -la --color=always {}"
-#   fi
-# }
- # --preview '[[ $(file --mime {}) == *text* ]] && bat --color=always --style=plain {} || ls -la --color=always {}' \
