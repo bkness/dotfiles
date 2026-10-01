@@ -6,6 +6,10 @@
 ABBR_USER_ABBREVIATIONS_FILE="$HOME/dev/dotfiles/zsh/abbreviations"
 zinit light olets/zsh-abbr
 
+# Extra completion definitions (hundreds of commands). Not deferred: it has to
+# be on fpath before compinit runs in .zshrc
+zinit light zsh-users/zsh-completions
+
 # Fuzzy tab completion
 zinit light Aloxaf/fzf-tab
 
