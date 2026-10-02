@@ -467,7 +467,7 @@ petty() {
 # ---------------------------------------
 # site — sitebuilder's operator command, from any folder
 # ---------------------------------------
-# site list | new | edit <slug> ["change"] | preview | publish | undo | log
+# site list | new | edit <slug> ["change"] | today <slug> "text" | preview | publish | undo | log
 SITEBUILDER_DIR="$HOME/dev/projects/sitebuilder"
 
 # desc: Client sites: site list | new | edit <slug> "change" | preview | publish | undo | log
@@ -479,7 +479,7 @@ site() {
 # Tab: subcommands, then site folders
 _site() {
   if (( CURRENT == 2 )); then
-    compadd list new edit preview publish undo log
+    compadd list new edit today preview publish undo log
   elif (( CURRENT == 3 )) && [[ $words[2] != (list|new) ]]; then
     compadd ${(f)"$(command ls -1 "$SITEBUILDER_DIR/sites" 2>/dev/null)"}
   fi
