@@ -713,7 +713,7 @@ github_ui_branches() {
               --ansi \
               --border-label='  ◈  SWITCH  ' \
               --prompt='  ❯ ' \
-              --preview='git log --oneline --graph --color=always {-1} 2>/dev/null | head -20' \
+              --preview='git log --oneline --graph  --color=always {-1} 2>/dev/null | head -20' \
               --preview-window=right:55% \
               --preview-label='  Log  ') || continue
         [[ "${branch##  }" == "← back" ]] && continue
@@ -732,34 +732,50 @@ github_ui_branches() {
         local default_branch
         default_branch=$(_gh_default_branch)
         default_branch=${default_branch:-main}
-        local branch
-        branch=$({ printf '%s\n' "  ← back"; git branch \
+        local picked
+        picked=$({ printf '%s\n' "  ← back"; git branch \
           | grep -v '^\*' \
           | sed 's/^[* ]*//' \
           | grep -v "^${default_branch}$"; } \
           | _fzf \
               --border-label='  ◈  DELETE  ' \
               --prompt='  ❯ ' \
+              --multi \
+              --bind='ctrl-a:select-all' \
+              --header='<tab> mark <ctrl-a> all <enter> delete' \
               --preview='git log --oneline --color=always {-1} | head -10' \
               --preview-window=right:55%) || continue
-        [[ "${branch##  }" == "← back" ]] && continue
-        echo -n "  Delete '$branch'? (y/n): " >/dev/tty
-        read -r confirm </dev/tty || continue
-        if [[ "$confirm" == "y" ]]; then
+        local -a branches=("${(@f)picked}") deleted=() not_deleted=()
+        branches=("${(@)branches:#  ← back}")
+        (( ${#branches} )) || continue
+        _gh_confirm "Delete ${#branches} branch(es)?" || continue
+        local branch force merged_pr
+        for branch in "${branches[@]}"; do
           if git branch -d "$branch" 2>/dev/null; then
-            _GH_MSG="  ✅ Deleted '$branch'"
+            deleted+=("$branch")
           else
-            local merged_pr
             merged_pr=$(gh pr list --head "$branch" --state merged --json number --jq 'length' 2>/dev/null)
-            if [[ "$merged_pr" -gt 0 ]]; then
-              git branch -D "$branch" && _GH_MSG="  ✅ Deleted '$branch' (squash-merged)"
+            if [[ "$merged_pr" == <-> ]] && (( merged_pr > 0 )); then
+              if git branch -D "$branch"; then
+                deleted+=("$branch (squash-merged)")
+              else
+                not_deleted+=("$branch")
+              fi
             else
               echo -n "  ⚠️  Not fully merged. Force delete? (y/n): " >/dev/tty
-              read -r force </dev/tty
-              [[ "$force" == "y" ]] && git branch -D "$branch" && _GH_MSG="  ✅ Force deleted '$branch'"
+              read -r force </dev/tty || force=""
+              if [[ "$force" == "y" ]] && git branch -D "$branch"; then
+                deleted+=("$branch (forced)")
+              else
+                not_deleted+=("$branch")
+              fi
             fi
           fi
-        fi
+        done
+        local -a lines=()
+        (( ${#deleted} )) && lines+=("  ✅ Deleted ${#deleted} branch(es): ${(j:, :)deleted}")
+        (( ${#not_deleted} )) && lines+=("  ⚠️  Not deleted: ${(j:, :)not_deleted}")
+        _GH_MSG=${(F)lines}
         ;;
     esac
     return
